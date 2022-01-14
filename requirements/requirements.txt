@@ -1,0 +1,8 @@
+numpy>=1.19.5
+pandas>=1.1.5
+xarray>=0.16.2
+xclim>=0.25.0
+matplotlib>=3.3.4
+seaborn>=0.11.2
+boto3>=1.11.0
+setuptools>=39.1.0
