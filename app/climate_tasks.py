@@ -1,4 +1,3 @@
-from climate_ensembles.bias_correction import ERA5
 from utils import *
 
 ### Tasks ###
@@ -14,35 +13,33 @@ from utils import *
 
 class ClimateModel:
 
-    def __init__(self, name, directory=None, path=None, data=None):
+    def __init__(self, name, data=None):
         self.name = name
-        if data is not None:
-            self.dataset = data
-        elif directory is not None:
-            self.directory = directory
-            if name == "t2m":
-                if path is None:
-                        path = 'era5/t2m'
-                self.dataset = normalize_time(import_dataset(self.directory, path)).sel(bnds=0)
-            elif name =='EC_Earth':
-                if path is None:
-                        path =  'cmip6/EC-Earth3'
-                self.dataset = normalize_time(import_dataset(self.directory, path)).rename({'lat': 'latitude','lon': 'longitude'}).sel(bnds=0)
-            elif name =='GFDL_ESM4': 
-                if path is None:
-                        path = 'cmip6/GFDL_ESM4'
-                self.dataset = normalize_time(cfnoleap_to_datetime(import_dataset(self.directory, path))).rename({'lat': 'latitude','lon': 'longitude'}).sel(bnds=1)
+        self.dataset = data
+        # TODO Add all the rest of the models here / structured as needed.
+        if name == "t2m":
+            self.dataset = normalize_time(data).sel(bnds=0)
+        elif name =='EC_Earth':
+            self.dataset = normalize_time(data).rename({'lat': 'latitude','lon': 'longitude'}).sel(bnds=0)
+        elif name =='GFDL_ESM4': 
+            self.dataset = normalize_time(cfnoleap_to_datetime(data)).rename({'lat': 'latitude','lon': 'longitude'}).sel(bnds=1)
         else:
-            print("ERROR: Please either pass data or directory to the data.")
+            print("ERROR: Please  pass the type of model.")
 
 ## Coordinates
 ## Different methods can be used to choose coordinate places (nearest is default)
-def select_location(era5_model, model, coordinates, isERA5=False, start='1979-01-01', end='2014-12-31'):
+def select_location(data, args):
     """
     :param data: Data type object
     """
+    isERA5=False # parameters?
+    start='1979-01-01'
+    end='2014-12-31'
+    coordinates=get_coords(args.coordinates)
+
     model = ClimateModel("climate_model", data=data['selected_model'])
-    data = model.dataset
+    data = model.dataset.df
+    print("*************************************************************", data)
 
     start_date = np.datetime64(start)
     end_date = np.datetime64(end)

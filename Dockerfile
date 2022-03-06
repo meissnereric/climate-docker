@@ -9,14 +9,7 @@ RUN ls /app
 
 RUN chmod 755 /app/*
 
-#COPY /app/credentials ~/.aws/credentials
+CMD /app/main.py --task='select_location' --coordinates='Dhaka'
 
-
-CMD /app/download_data.py
-
-
-
-
-#CMD /root/run_apache.s
 
 
