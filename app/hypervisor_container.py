@@ -52,46 +52,43 @@ class ClimateHypervisor(ContainerHypervisor):
         parser = argparse.ArgumentParser(description='Choice of Climate Ensembling task and parameters for it')
         parser.add_argument('--parameters',
                             help='the parameters dictionary')
-        # parser.add_argument('--task',
-        #                     help='the task that you want to run (what output you want)')
-        # parser.add_argument('--coordinates',
-        #                     help='if the select_location task, the location you want')
-        # parser.add_argument('--bias',
-        #                     help='bias correction method')
-        # parser.add_argument('--aggregation',
-        #                     help='aggregation method')
-        # parser.add_argument('--inputs',
-        #                     help='dictionary of s3 URIs for input data. Ex. {\'selected_model\': \'s3://...\', ...} ')
-        # parser.add_argument('--outputs',
-        #                     help='dictionary of s3 URIs for output data. Ex. {\'selected_model\': \'s3://...\', ...}')
-
-        
         args = parser.parse_args()
         real_args = json.loads(args.parameters)
         print("Parser arguments output: {}".format(real_args))
 
         return real_args
 
-    def retrieve_data(self, input_data):
+    def _parse_data(self, key, value): 
+            if value.startswith("s3://"): # TODO Change to "if self.is_input_data(value)"
+                components = value[5:].split('/')
+                print("Components: {} {}".format((key, value), components))
+                s3_key = '/'.join(components[1:])
+                s3_bucket = components[0]
+                if key not in self.data:
+                    self.data[key] = {}
+                self.data[key][value] = (Data(DataType.MDF, DataLocationType.S3, s3_key=s3_key, s3_bucket_name=s3_bucket))
+
+    def retrieve_data(self, args):
         """
         Returns a dictionary of type {"name of Data object": Data}
         """
-        for i in input_data.items():
+        print("Args!: {}".format(args))
+        inputs = args['inputs']
+        parameters = args['parameters'][args['service_name']]
+        for key, value in {**inputs, **parameters}.items():
+            print("Key: {} Value: {}".format(key, value))
             # Grab the argument and stick it in the dictionary?
-            components = i[1][5:].split('/')
-            print("Components: {} {}".format(i, components))
-            s3_key = ''.join(components[1:])
-            s3_bucket = components[0]
-            self.data['selected_model'] = Data(DataType.MDF, DataLocationType.S3, s3_key=s3_key, s3_bucket_name=s3_bucket)
-            break
-        self.data['base_model'] = Data(DataType.MDF, DataLocationType.S3, s3_key=s3_key, s3_bucket_name=s3_bucket)
+            if isinstance(value, list):
+                listvalue = value
+                for v in listvalue:
+                    self._parse_data(key, v)
+            else:
+                self._parse_data(key, value)
 
         return self.data
 
-    def upload_outputs(self, outputs, output_locations):
-        return super().upload_outputs(outputs)
         
-    def run_task(self, task, data, parameters):
+    def run_task(self, task, data, args):
         """
         :param task: String of the task name
         :param data: {'name of data': Data}
@@ -106,14 +103,21 @@ class ClimateHypervisor(ContainerHypervisor):
         5.
 
         """
+        print("Args: {}".format(args))
         print("Task: {}".format(task))
         print("Data: {}".format(data))
+        parameters = args['parameters'][task]
         print("Parameters: {}".format(parameters))
-        if task == "select_location":
+        if task == "SelectLocation":
             return select_location(data, parameters)
         
-        elif task == "bias_correction":
+        elif task == "BiasCorrection":
             return apply_bias_correction(data, parameters)
 
-        elif task == "aggregate":
+        elif task == "AggregateModels":
             return aggregate_models(data, parameters)
+        else:
+            assert False, "No valid task chosen!"
+
+    def upload_outputs(self, outputs, output_locations):
+        print("TODO Upload those outputs! {} {} ".format(outputs, output_locations))
