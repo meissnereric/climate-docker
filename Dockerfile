@@ -9,7 +9,7 @@ RUN ls /app
 
 RUN chmod 755 /app/*
 
-CMD /app/main.py --task='select_location' --coordinates='Dhaka'
+CMD /app/main.py --parameters={"dataId": "SelectLocation--5846990926543449174","service_name": "SelectLocation","inputs": {},"outputs": {},"parameters": {"SelectLocation": {"models": ["s3://climate-ensembling/EC-Earth3/","s3://climate-ensembling/EC-Earth3/"],"locations": ["Dhaka"]}}}
 
 
 

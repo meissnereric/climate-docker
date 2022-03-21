@@ -10,7 +10,7 @@ if __name__ == "__main__":
 
     args = hv.parse()
 
-    print("Running task {}".format(args.task))
+    print("Running task with parameters {}".format(args))
     input_data_locations = dict(args['inputs'])
     output_data_locations = dict(args['outputs'])
 

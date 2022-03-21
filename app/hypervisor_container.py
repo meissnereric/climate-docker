@@ -1,6 +1,8 @@
 from data import Data, DataLocationType, DataType
 from climate_tasks import aggregate_models, apply_bias_correction, select_location
 import argparse
+import json
+import sys
 
 # TEST_DATA_S3_URI = "s3://climate-ensembling/test_data.csv"
 TEST_DATA_KEY = "tst/EC-Earth3/"
@@ -45,26 +47,30 @@ class ClimateHypervisor(ContainerHypervisor):
 
     def parse(self, verbose=True):
 
+        print("Arguments passed {} \n\n".format(sys.argv))
+
         parser = argparse.ArgumentParser(description='Choice of Climate Ensembling task and parameters for it')
-        parser.add_argument('--task',
-                            help='the task that you want to run (what output you want)')
-        parser.add_argument('--coordinates',
-                            help='if the select_location task, the location you want')
-        parser.add_argument('--bias',
-                            help='bias correction method')
-        parser.add_argument('--aggregation',
-                            help='aggregation method')
-        parser.add_argument('--inputs',
-                            help='dictionary of s3 URIs for input data. Ex. {\'selected_model\': \'s3://...\', ...} ')
-        parser.add_argument('--outputs',
-                            help='dictionary of s3 URIs for output data. Ex. {\'selected_model\': \'s3://...\', ...}')
+        parser.add_argument('--parameters',
+                            help='the parameters dictionary')
+        # parser.add_argument('--task',
+        #                     help='the task that you want to run (what output you want)')
+        # parser.add_argument('--coordinates',
+        #                     help='if the select_location task, the location you want')
+        # parser.add_argument('--bias',
+        #                     help='bias correction method')
+        # parser.add_argument('--aggregation',
+        #                     help='aggregation method')
+        # parser.add_argument('--inputs',
+        #                     help='dictionary of s3 URIs for input data. Ex. {\'selected_model\': \'s3://...\', ...} ')
+        # parser.add_argument('--outputs',
+        #                     help='dictionary of s3 URIs for output data. Ex. {\'selected_model\': \'s3://...\', ...}')
 
         
         args = parser.parse_args()
-        args = vars(args)
-        print("Parser arguments output: {}".format(args))
+        real_args = json.loads(args.parameters)
+        print("Parser arguments output: {}".format(real_args))
 
-        return args
+        return real_args
 
     def retrieve_data(self, input_data):
         """

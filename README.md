@@ -7,11 +7,10 @@ aws ecr get-login-password --region eu-west-1 | docker login --username AWS --pa
 ```
 
 ```
-docker tag 1c5f8168cd29 288687564189.dkr.ecr.eu-west-1.amazonaws.com/climate-ensembling:hello-world
-```
+docker tag 1c5f8168cd29 288687564189.dkr.ecr.eu-west-1.amazonaws.com/climate-ensembling:climate
 
 ```
-docker push 288687564189.dkr.ecr.eu-west-1.amazonaws.com/climate-ensembling:hello-world
+docker push 288687564189.dkr.ecr.eu-west-1.amazonaws.com/climate-ensembling:climate
 ```
 
 ### Parameters
