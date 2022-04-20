@@ -49,12 +49,6 @@ class Data:
 
         return string
 
-    def get_output_path(self):
-        return "test/"
-
-    def get_output_filename(self):
-        return "test_csv.csv"
-
     def _object_to_pandas(self, data_object):
         df = pd.read_csv(data_object)
         return df
@@ -92,8 +86,6 @@ class Data:
         elif self.data_location == DataLocationType.KAFKA:
             pass
    
-    def upload_data(self):
-        path = self.get_output_path()
-        filename = self.get_output_filename()
+    def upload_data(self, path, filename):
         self.df.save_csv(filename)
         self.s3_bucket.upload_file(path+filename, filename)

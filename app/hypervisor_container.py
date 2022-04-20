@@ -3,6 +3,8 @@ from climate_tasks import aggregate_models, apply_bias_correction, select_locati
 import argparse
 import json
 import sys
+import boto3
+from datetime import datetime
 
 # TEST_DATA_S3_URI = "s3://climate-ensembling/test_data.csv"
 TEST_DATA_KEY = "tst/EC-Earth3/"
@@ -73,9 +75,21 @@ class ClimateHypervisor(ContainerHypervisor):
         Returns a dictionary of type {"name of Data object": Data}
         """
         print("Args!: {}".format(args))
+        service_name = args['service_name']
         inputs = args['inputs']
-        parameters = args['parameters'][args['service_name']]
-        for key, value in {**inputs, **parameters}.items():
+        parameters = args['parameters'][service_name]
+
+        for key, value in inputs.items():
+            print("Key: {} Value: {}".format(key, value))
+            # Grab the argument and stick it in the dictionary?
+            if isinstance(value, list):
+                listvalue = value
+                for v in listvalue:
+                    self._parse_data(key, v)
+            else:
+                self._parse_data(key, value)
+
+        for key, value in parameters.items():
             print("Key: {} Value: {}".format(key, value))
             # Grab the argument and stick it in the dictionary?
             if isinstance(value, list):
@@ -108,16 +122,38 @@ class ClimateHypervisor(ContainerHypervisor):
         print("Data: {}".format(data))
         parameters = args['parameters'][task]
         print("Parameters: {}".format(parameters))
+        outputs = None
         if task == "SelectLocation":
-            return select_location(data, parameters)
+            outputs = select_location(data, parameters)
         
         elif task == "BiasCorrection":
-            return apply_bias_correction(data, parameters)
+            outputs =  apply_bias_correction(data, parameters)
 
         elif task == "AggregateModels":
-            return aggregate_models(data, parameters)
+            outputs = aggregate_models(data, parameters)
         else:
             assert False, "No valid task chosen!"
+        
+        for output in outputs:
+            data.append(Data())
 
-    def upload_outputs(self, outputs, output_locations):
+    def upload_outputs(self, outputs, args, bucket_name='climate-ensembling'):
+
         print("TODO Upload those outputs! {} {} ".format(outputs, output_locations))
+        s3 = boto3.resource("s3")
+        s3_bucket = s3.Bucket(name=bucket_name)
+        output_locations=args['outputs']
+
+        # datetime object containing current date and time
+        now = datetime.now()
+        
+        print("now =", now)
+        dt_string = now.strftime("%d:%m:%Y:%H:%M")
+        # dd/mm/YY H:M:S
+
+        for output, (key, value) in zip(outputs, output_locations):
+            filename=dt_string+'.csv'
+            output.save_csv(filename)
+            s3_bucket.upload_file(value+'/'+filename, filename)
+
+        print ("Finished uploading data!")
