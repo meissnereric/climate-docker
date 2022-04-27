@@ -57,7 +57,7 @@ def select_location(data, parameters):
             else:
                 location_data = select_time(data, start_date, end_date).sel(
                     latitude=coordinate[0], longitude=180+coordinate[1], method='nearest').tas.to_dataframe()
-            models[model_name] = {'location_data': location_data}
+            models[model_name] = location_data
     return models
 
 def apply_bias_correction(era5_model_data, model_data, bc_method,

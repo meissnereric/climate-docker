@@ -134,15 +134,20 @@ class ClimateHypervisor(ContainerHypervisor):
         else:
             assert False, "No valid task chosen!"
         
+        return outputs
+
         for output in outputs:
             data.append(Data())
 
     def upload_outputs(self, outputs, args, bucket_name='climate-ensembling'):
+        """
+        Assumes outputs is a list of DataFrames [df, df, ...]
+        """
 
-        print("TODO Upload those outputs! {} {} ".format(outputs, output_locations))
         s3 = boto3.resource("s3")
         s3_bucket = s3.Bucket(name=bucket_name)
         output_locations=args['outputs']
+        print("Upload these outputs! Outputs: {} Output Locations: {} ---".format(outputs, output_locations))
 
         # datetime object containing current date and time
         now = datetime.now()
@@ -151,9 +156,9 @@ class ClimateHypervisor(ContainerHypervisor):
         dt_string = now.strftime("%d:%m:%Y:%H:%M")
         # dd/mm/YY H:M:S
 
-        for output, (key, value) in zip(outputs, output_locations):
+        for output, location in zip(outputs, output_locations):
             filename=dt_string+'.csv'
-            output.save_csv(filename)
-            s3_bucket.upload_file(value+'/'+filename, filename)
+            outputs[output].save_csv(filename)
+            s3_bucket.upload_file(output_locations[location]+'/'+filename, filename)
 
         print ("Finished uploading data!")
