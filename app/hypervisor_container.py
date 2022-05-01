@@ -158,7 +158,9 @@ class ClimateHypervisor(ContainerHypervisor):
 
         for output, location in zip(outputs, output_locations):
             filename=dt_string+'.csv'
-            outputs[output].save_csv(filename)
-            s3_bucket.upload_file(output_locations[location]+'/'+filename, filename)
+            bucket_name = 'climate-ensembling'
+            obj_name='SelectLocation/f715723d0caa6ef7/' + filename
+            outputs[output].to_csv(filename)
+            s3_bucket.upload_file(filename, bucket_name, obj_name)
 
         print ("Finished uploading data!")

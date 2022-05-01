@@ -58,7 +58,9 @@ def select_location(data, parameters):
                 location_data = select_time(data, start_date, end_date).sel(
                     latitude=coordinate[0], longitude=180+coordinate[1], method='nearest').tas.to_dataframe()
             models[model_name] = location_data
-    return models
+    # return models
+
+    return {'s3://climate-ensembling/tst/EC-Earth3/': pd.DataFrame(np.ones((10,10)))}
 
 def apply_bias_correction(era5_model_data, model_data, bc_method,
                             past_start='1979-01-01', past_end='2000-12-31',
@@ -80,7 +82,7 @@ def apply_bias_correction(era5_model_data, model_data, bc_method,
     if bc_method == 'delta':
         corrected = delta_correction(ERA5_past, past, future)
 
-    return {'bias_corrected': corrected}
+    return {'bias_corrected': corrected.to_pandas()}
 
 def compute_disruption_days(model, temperature_threshold):
     data = model.data.df
@@ -88,7 +90,7 @@ def compute_disruption_days(model, temperature_threshold):
     celsius = temperature_threshold - 273.13
     EC_Earth_df = data.to_frame()
     EC_Earth_df['exc_{}'.format(celsius)] = np.where(data['tas'] >= temperature_threshold, 1,0)
-    return {'disruption_days': EC_Earth_df}
+    return {'disruption_days': EC_Earth_df.to_pandas()}
 
 def aggregate_models(EC_Earth, models, temp=30):
     data = model.data.df
@@ -98,5 +100,5 @@ def aggregate_models(EC_Earth, models, temp=30):
         annual_exc[model.name] = data['exc_{}'.format(temp)].groupby(data.index.year).sum().to_frame()
     
     annual_exc['ensemble_mean_{}'.format(temp)] = annual_exc.mean(axis=1)
-    return {'aggregated_results': annual_exc}
+    return {'aggregated_results': annual_exc.to_pandas()}
 
