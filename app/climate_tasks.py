@@ -1,17 +1,6 @@
 from utils import *
 import numpy as np
 
-### Tasks ###
-
-# directory = '/Users/malavirdee/Documents/climate_data/'
-# ERA5_Model = ClimateModel("t2m", directory)
-# EC_Earth_Model = ClimateModel('EC_Earth', directory)
-# GFDL_ESM4_Model = ClimateModel('GFDL_ESM4', directory)
-
-## TODO
-# Rename all the other models to just use tas for the naming <3
-# 
-
 class ClimateModel:
 
     def __init__(self, name, data=None):
@@ -22,7 +11,7 @@ class ClimateModel:
             self.data.df = normalize_time(self.data.df).sel(bnds=0)
         elif name =='EC_Earth':
             self.data.df = normalize_time(self.data.df).rename({'lat': 'latitude','lon': 'longitude'}).sel(bnds=0)
-        elif name =='GFDL_ESM4': 
+        elif name =='GFDL_ESM4':
             self.data.df = normalize_time(cfnoleap_to_datetime(self.data.df)).rename({'lat': 'latitude','lon': 'longitude'}).sel(bnds=1)
         else:
             print("ERROR: Please  pass the type of model.")
@@ -70,7 +59,7 @@ def apply_bias_correction(era5_model_data, model_data, bc_method,
     era5_model = ClimateModel("climate_model", data=era5_model_data)
     data = model.data.df
     era5 = era5_model.data.df
-                            
+
     ps_past = [np.datetime64(past_start), np.datetime64(past_end)]
     ps_future = [np.datetime64(future_start), np.datetime64(future_end)]
 
@@ -86,7 +75,7 @@ def apply_bias_correction(era5_model_data, model_data, bc_method,
 
 def compute_disruption_days(model, temperature_threshold):
     data = model.data.df
-    
+
     celsius = temperature_threshold - 273.13
     EC_Earth_df = data.to_frame()
     EC_Earth_df['exc_{}'.format(celsius)] = np.where(data['tas'] >= temperature_threshold, 1,0)
@@ -98,7 +87,6 @@ def aggregate_models(EC_Earth, models, temp=30):
     for model in models:
         # groupby year, aggregate count on 'exc'
         annual_exc[model.name] = data['exc_{}'.format(temp)].groupby(data.index.year).sum().to_frame()
-    
+
     annual_exc['ensemble_mean_{}'.format(temp)] = annual_exc.mean(axis=1)
     return {'aggregated_results': annual_exc.to_pandas()}
-
