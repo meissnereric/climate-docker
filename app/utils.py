@@ -6,13 +6,103 @@ import calendar
 import os
 from geopy.geocoders import Nominatim
 
-def filesize(dataset):
-    return str(round(dataset.nbytes * (2 ** -30), 2))+'GB'
+###### import data
 
 def get_local_directory():
     cwd = os.getcwd()
     print("CWD: {}".format(cwd))
     return cwd
+
+def import_dataset(folder):
+    '''
+    read xarray multi-file dataset for CMIP5/CMIP6 global climate models
+    folders are 'cmip5/<model_name>' or 'cmip6/<model_name>'
+    see: https://xarray.pydata.org/en/stable/generated/xarray.open_mfdataset.html
+    '''
+    #directory = '/Users/malavirdee/Documents/climate_data/'
+    print("Import model: dir {} folder {}".format(directory, folder))
+    path = os.path.join(directory+"/"+folder+"/*.nc")
+    return xr.open_mfdataset(path, engine="netcdf4")
+
+def import_reference(folder="reference/ERA5"):
+    '''
+    read xarray reference dataset (i.e. ERA5 or ERA-Interim gridded observational reanalysis)
+    see: https://www.ecmwf.int/en/forecasts/datasets/reanalysis-datasets/era5
+    '''
+    print("Import reference: dir {} folder {}".format(directory, folder))
+    path = os.path.join(directory+"/"+folder+"/*.nc")
+    return xr.open_mfdataset(path, engine="netcdf4")
+
+
+###### data processing
+
+def remove_feb_29_30(ds):
+    '''
+    if dataset contains Feb 29 or Feb 30, it cannot be converted between calendar formats,
+    therefore these are removed from all
+    '''
+    feb_29 = ds.time.values[(ds.time.dt.month == 2) & (ds.time.dt.day == 29)]
+    feb_30 = ds.time.values[(ds.time.dt.month == 2) & (ds.time.dt.day == 30)]
+    return ds.drop_sel(time=feb_29).drop_sel(time=feb_30)
+
+def normalize_time(ds):
+    '''
+    remove time string (e.g. '12:00:00' every day) from daily-averaged data
+    '''
+    ds['time'] = ds.indexes['time'].normalize()
+    return ds
+
+def calendar_type(ds):
+    '''
+    see cftime calendar types: https://unidata.github.io/cftime/api.html
+    '''
+    return type(ds.time.values[0])
+
+def cf_to_datetime(ds):
+    '''
+    take cftime calendar types and convert to datetime64
+    note: requires Feb 29 and Feb 30 to be removed first
+    '''
+    datetimeindex = ds.indexes['time'].to_datetimeindex().normalize()
+    ds_dt=ds
+    ds_dt['time']= ('time', datetimeindex)
+    assert len(ds.time) == len(ds_dt.time)
+    return ds_dt
+
+def process_reference(ds):
+    '''
+    data processing steps for reference (i.e. ERA5) dataset
+    '''
+    a = remove_feb_29_30(ds)
+    b = normalize_time(a)
+    return b
+
+def process_models(ds, reference):
+    '''
+    data processing steps for climate model dataset
+    takes a reference dataset (can use ERA5 after applying process_reference) with correct calendar
+    see: https://xarray.pydata.org/en/stable/generated/xarray.DataArray.reindex_like.html
+    "ffill": propagate last valid index value forward
+    '''
+    #a = import_dataset(ds)
+    b = remove_feb_29_30(ds)#(a)
+    if calendar_type(b) in {np.datetime64}:
+        c = b
+    elif calendar_type(b) in {cftime._cftime.DatetimeNoLeap, cftime._cftime.Datetime360Day}:
+        c = cf_to_datetime(b)
+    else:
+        print("Error: unknown calendar type")
+    d = c.reindex_like(reference, method="ffill")
+    e = normalize_time(d)
+    return e
+
+######
+
+
+#**************************************************************************************
+
+
+
 
 def cfnoleap_to_datetime(ds):
     datetimeindex = ds.indexes['time'].to_datetimeindex()
@@ -37,7 +127,7 @@ def get_nearest(da, latitude, longitude):
     lat = da.sel(lat=latitude, lon=longitude, method="nearest")['lat'].values
     lon = da.sel(lat=latitude, lon=longitude, method="nearest")['lon'].values
     return float(lat), float(lon)
-    
+
 def import_mdf_dataset(directory, folder):
     print("Import dataset: dir {} folder {}".format(directory, folder))
     path = os.path.join(directory+"/"+folder+'/*.nc')
@@ -62,7 +152,7 @@ def get_coords(city):
     geolocator = Nominatim(user_agent='http')
     location = geolocator.geocode(city)
     latitude, longitude = location.latitude, location.longitude
-    print(location, (latitude, longitude))  
+    print(location, (latitude, longitude))
     return (latitude, longitude)
 
 def select_time(ds, start, end):
