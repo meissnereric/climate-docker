@@ -16,7 +16,7 @@ def get_local_directory():
 def import_dataset(folder):
     '''
     read xarray multi-file dataset for CMIP5/CMIP6 global climate models
-    folders are 'cmip5/<model_name>' or 'cmip6/<model_name>'
+    folders are arranged per model as 'cmip5/<model_name>' or 'cmip6/<model_name>'
     see: https://xarray.pydata.org/en/stable/generated/xarray.open_mfdataset.html
     '''
     #directory = '/Users/malavirdee/Documents/climate_data/'
@@ -39,7 +39,7 @@ def import_reference(folder="reference/ERA5"):
 def remove_feb_29_30(ds):
     '''
     if time index contains Feb 29 or Feb 30 as in some cftime formats, it cannot be converted,
-    therefore these are removed from all
+    therefore these are removed from all models + reference dataset
     '''
     feb_29 = ds.time.values[(ds.time.dt.month == 2) & (ds.time.dt.day == 29)]
     feb_30 = ds.time.values[(ds.time.dt.month == 2) & (ds.time.dt.day == 30)]
@@ -130,16 +130,17 @@ def select_time(ds, start, end):
     '''
     return ds.sel(time=slice(start, end))
 
-def select_location(ds, city, start=None, end=None):
+def select_location(ds, city, start=None, end=None): #, to_pandas=False):
     '''
     select 1-d time series for specified city, optionally select time range
     returns DataArray
+    *** should this output a pandas df? unsure where to convert
     '''
     coords = get_coords(city)
     # note: model + ERA latitudes are -90 -> +90, longitudes are 0 -> +360
-    ds_1d = ds.sel(lat=coords[0], lon=180+coords[1], method='nearest')
-    ds_1d_sl = select_time(model_1d, start, end)
-    return(ds_1d_sl)
+    da = ds.sel(lat=coords[0], lon=180+coords[1], method='nearest')
+    da_sl = select_time(da, start, end)#.to_dataframe()
+    return(da_sl)
 
 def get_nearest(ds, latitude, longitude):
     '''
@@ -157,6 +158,7 @@ def rename_coord(da, old_name, new_name):
     if old_name in list(da.coords.keys()):
         da = da.rename({old_name:new_name})
     return da
+
 
 
 ##################### calendar utils #####################
@@ -180,20 +182,123 @@ def calendar_days(start, end):
     delta = end - start
     return(delta.astype('timedelta64[D]'))
 
-##################### bias correction #####################
+##################### bias-correction #####################
+
+# see description of 4 standard bias-correction methods:
+# https://www.metoffice.gov.uk/binaries/content/assets/metofficegovuk/pdf/research/ukcp/ukcp18-guidance---how-to-bias-correct.pdf
+
+def no_correction(model_name, model, reference, past, future):
+    '''
+    return reference + model dataframe without applying any bias correction method
+    takes past, future lists e.g. past = [past_start, past_end]
+    *** make bias correction functions flexible to other variables than t2m
+    '''
+    reference_past = reference.loc[past[0]:past[1]].t2m
+    reference_future = reference.loc[future[0]:future[1]].t2m
+
+    model_past = model.loc[past[0]:past[1]].t2m
+    model_future = model.loc[future[0]:future[1]].t2m
+
+    uncorrected = model_future.to_frame("model")
+    uncorrected['model'] = model_name
+
+    reference_df = reference_future.to_frame("reference")
+
+    df = pd.concat([reference_df.t2m, corrected_df.t2m, corrected_df.model], axis=1)
+    #df.rename(columns={"reference": "T_obs", "model": "T_model"}, inplace=True)
+    return df
+
+
+def delta_correction(model_name, model, reference, past, future):
+    '''
+    simplest additive mean-shift bias correction
+    i.e. model_future = model_future + (observation_past.mean - model_past.mean)
+    returns reference + bias-corrected model dataframe
+    '''
+
+    reference_past = reference.loc[past[0]:past[1]].t2m
+    reference_future = reference.loc[future[0]:future[1]].t2m
+
+    model_past = model.loc[past[0]:past[1]].t2m
+    model_future = model.loc[future[0]:future[1]].t2m
+
+    corrected = (model_future + (np.nanmean(observation_past) - np.nanmean(model_past))).to_frame("model")
+    corrected['model']=model_name
+
+    reference_df = reference_future.to_frame("reference")
+
+    df = pd.concat([reference_df.t2m, corrected_df.t2m, corrected_df.model], axis=1)
+    #df.rename(columns={"reference": "T_obs", "model": "T_model"}, inplace=True)
+    return df
+
+def relative_delta_correction(model_name, model, reference, past, future):
+    '''
+    relative mean-shift bias correction
+    i.e. model_future = model_future * (observation_past.mean / model_past.mean)
+    returns reference + bias-corrected model dataframe
+    '''
+
+    reference_past = reference.loc[past[0]:past[1]].t2m
+    reference_future = reference.loc[future[0]:future[1]].t2m
+
+    model_past = model.loc[past[0]:past[1]].t2m
+    model_future = model.loc[future[0]:future[1]].t2m
+
+    corrected = (model_future * (np.nanmean(observation_past) / np.nanmean(model_past))).to_frame("model")
+    corrected['model']=model_name
+
+    reference_df = reference_future.to_frame("reference")
+
+    df = pd.concat([reference_df.t2m, corrected_df.t2m, corrected_df.model], axis=1)
+    #df.rename(columns={"reference": "T_obs", "model": "T_model"}, inplace=True)
+    return df
+
+##################### reordering utils #####################
+
+def levenshtein(a,b):
+    '''
+    Calculates the Levenshtein matching distance between series a and b
+    see: https://en.wikipedia.org/wiki/Levenshtein_distance
+    '''
+    n, m = len(a), len(b)
+    if n > m:
+        # Make sure n <= m, to use O(min(n,m)) space
+        a,b = b,a
+        n,m = m,n
+
+    current = range(n+1)
+    for i in range(1,m+1):
+        previous, current = current, [i]+[0]*n
+        for j in range(1,n+1):
+            add, delete = previous[j]+1, current[j-1]+1
+            change = previous[j-1]
+            if a[j-1] != b[i-1]:
+                change = change + 1
+            current[j] = min(add, delete, change)
+
+    return current[n]
+
+def band_matrix(window: int, N):
+    '''
+    return NxN band matrix so that matrices multiplied by band matrix retain a +/- window
+    on each side of current element and discard points outside
+    '''
+    if (window % 2) == 0:
+        return("error: window must be odd number") # require symmetry around central element
+    else:
+        w = int((window - 1)/2) # w is +/- distance from central point
+        a = np.zeros((N,N))
+        i,j = np.indices(a.shape)
+        for n in range(w+1):
+            a[i==j] = 1.
+            a[i==j+n] = 1.
+            a[i==j-n] = 1.
+        a[a==0]='nan'
+        return a
+
+#*** tbc
 
 #**************************************************************************************
-
-def delta_correction(observation, model_past, model_future):
-    '''
-    simplest mean-shift delta bias correction method
-    adding the mean change signal to observations
-    '''
-    c = model_future + (np.nanmean(observation) - np.nanmean(model_past))
-    return c
-
-
-
 
 ######################## Utils for Task Management #######################
 def load_object_from_s3(s3_client):
