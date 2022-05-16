@@ -63,6 +63,7 @@ def rename_coord(ds, names_dict):
     Rename coordinates in xr Dataset
     takes dictionary {"old_name":"new_name"}
     '''
+#   *** "coord" -> "dimension" to avoid confusion
     for old_name, new_name in names_dict.items():
         if old_name in list(ds.coords.keys()):
             ds.rename({old_name:new_name})
@@ -88,7 +89,7 @@ def process_reference(ds):
     # rename ERA 2m surface temperature "t2m" to temperature at surface "tas", as is model convention
     names_dict = {"latitude":"lat", "longitude":"lon", "t2m":"tas"}
     c = rename_coord(b, names_dict)
-    return b
+    return c
 
 def process_models(ds, reference):
     '''
@@ -150,14 +151,6 @@ def get_nearest(ds, latitude, longitude):
     lat = ds.sel(lat=latitude, lon=longitude, method="nearest")['lat'].values
     lon = ds.sel(lat=latitude, lon=longitude, method="nearest")['lon'].values
     return float(lat), float(lon)
-
-def rename_coord(da, old_name, new_name):
-    '''
-    rename coordinate in xr data array
-    '''
-    if old_name in list(da.coords.keys()):
-        da = da.rename({old_name:new_name})
-    return da
 
 
 
@@ -281,7 +274,7 @@ def levenshtein(a,b):
 def band_matrix(window: int, N):
     '''
     return NxN band matrix so that matrices multiplied by band matrix retain a +/- window
-    on each side of current element and discard points outside
+    on each side of diagonal element and discard points outside
     '''
     if (window % 2) == 0:
         return("error: window must be odd number") # require symmetry around central element
@@ -296,9 +289,7 @@ def band_matrix(window: int, N):
         a[a==0]='nan'
         return a
 
-#*** tbc
-
-#**************************************************************************************
+####
 
 ######################## Utils for Task Management #######################
 def load_object_from_s3(s3_client):

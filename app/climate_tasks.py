@@ -1,44 +1,71 @@
 from utils import *
 import numpy as np
+import xarray as xr
+
+def process_data(data, parameters):
+    '''
+    Processing steps:
+    - standardise calendar across models + reference datasets
+    - normalise time index format (i.e. remove "12:00:00:00" from daily data)
+    - standardise coordinate names (i.e. "latitude" -> "lat", "t2m" -> "tas" etc"
+    note: reindex_like requires standardised_calendar xarray dataset - small file, can be stored on github
+    '''
+    print("Processing datasets...")
+    models = {}
+
+    #*** create upload standard calendar xr dataset
+    standardised_calendar = xr.open_dataset("<path_to_standardised_calendar>", engine="netcdf4")
+
+    for model_name, model_data in data["models"].items()
+        print("Processing {}...".format(model_name))
+
+        if model_name in ['ERA5', 'ERA-Interim']:
+            processed_data = process_reference(model_data)
+            processed_data.attrs["is_reference"]==True
+            models[model_name] = processed_data
+
+        else:
+            processed_data = process_models(model_data, standardised_calendar)
+            processed_data.attrs["is_reference"]==False
+            models[model_name] = processed_data
+
+    #return models
+    return {'s3://climate-ensembling/tst/EC-Earth3/': pd.DataFrame(np.ones((10,10)))}
 
 
-def select_locations(data, parameters):
-    print('Selecting location...')
+def select_location(data, parameters):
+    '''
+    Select data by locations and time ranges specified in parameters
+    '''
+    print("Selecting location...")
 
-    # ensure time range is same across models
-    start, end = parameters['time_range']
+    start = parameters['time_range'][0] # np.datetime64
+    end = parameters['time_range'][1]
 
-    coordinates = {}
-    for city in parameters['cities']:
-        # this is redundant since get_1d takes city:str ?
-        coordinates[city] = get_coords(city) # returns lat, lon
-        print("***************"), city)
+    models = {}
 
-    # for now, move reference (ERA5) location selection elsewhere
-    model = {}
-    for name, data in parameters['models'].items():
+    for model_name, model_data in data["models"].items():
+        for loc in parameters['locations']:
+            selected_data = select_location(model_data, loc, start, end)
 
-        model_name = name
-        model_data = data
-        model_df = data.df #?
+            models[model_name] = selected_data
 
-        print("***************"), model_name, model_df.head())
+    #return models
+    return {'s3://climate-ensembling/tst/EC-Earth3/': pd.DataFrame(np.ones((10,10)))}
 
-        start_date = np.datetime64(start)
-        end_date = np.datetime64(end)
+    #path = 's3://climate-ensembling/' + ...?
+    #return {path: models}
 
-        for coord in coordinates.values():
 
-            model_1d = get_1d(model_data, city=city, start=start_date, end=end_date)
-            model_1d_df = model_1d.df #?
+#**************************************************************************************
 
-            print("***************"), model_1d_df.head())
 
-            models[model_name]=model_1d_df
+def apply_bias_correction(model_data, reference_data, bias_corrector, past, future):
+    '''apply a specified bias correction method (incl. None)'''
+    model = model_data.df
+    reference = reference.df
 
-        return {'s3://climate-ensembling/tst/EC-Earth3/': pd.DataFrame(np.ones((10,10)))}
-        #path = 's3://climate-ensembling/' + ...
-        #return {path: models}
+    model_past = select_time(model, reference.time[0], reference.time[-1])
 
 
 def apply_bias_correction(era5_model_data, model_data, bc_method,
