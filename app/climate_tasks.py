@@ -1,104 +1,119 @@
 from utils import *
 import numpy as np
+import xarray as xr
 
-### Tasks ###
-
-# directory = '/Users/malavirdee/Documents/climate_data/'
-# ERA5_Model = ClimateModel("t2m", directory)
-# EC_Earth_Model = ClimateModel('EC_Earth', directory)
-# GFDL_ESM4_Model = ClimateModel('GFDL_ESM4', directory)
-
-## TODO
-# Rename all the other models to just use tas for the naming <3
-# 
-
-class ClimateModel:
-
-    def __init__(self, name, data=None):
-        self.name = name
-        self.data = data
-        # TODO Add all the rest of the models here / structured as needed.
-        if name == "t2m":
-            self.data.df = normalize_time(self.data.df).sel(bnds=0)
-        elif name =='EC_Earth':
-            self.data.df = normalize_time(self.data.df).rename({'lat': 'latitude','lon': 'longitude'}).sel(bnds=0)
-        elif name =='GFDL_ESM4': 
-            self.data.df = normalize_time(cfnoleap_to_datetime(self.data.df)).rename({'lat': 'latitude','lon': 'longitude'}).sel(bnds=1)
-        else:
-            print("ERROR: Please  pass the type of model.")
-
-## Coordinates
-## Different methods can be used to choose coordinate places (nearest is default)
-def select_location(data, parameters):
-    """
-    :param data: Data type object
-    """
-    print("Made it inside select_location call!")
-    isERA5=False # parameters?
-    start='1979-01-01'
-    end='2014-12-31'
-    coordinates = {}
-    for l in parameters['locations']:
-        coordinates[l]=get_coords(l)
+def process_data(data, parameters):
+    '''
+    Processing steps:
+    - standardise calendar across models + reference datasets
+    - normalise time index format (i.e. remove "12:00:00:00" from daily data)
+    - standardise coordinate names (i.e. "latitude" -> "lat", "t2m" -> "tas" etc"
+    note: reindex_like requires standardised_calendar xarray dataset - small file, can be stored on github
+    '''
+    print("Processing datasets...")
     models = {}
-    for model_name, model_data in data['models'].items():
 
-        model = ClimateModel("EC_Earth", data=model_data)
-        data = model.data.df
-        print("**********************************select_location data***************************", data)
+    #*** create upload standard calendar xr dataset
+    standardised_calendar = xr.open_dataset("<path_to_standardised_calendar>", engine="netcdf4")
 
-        start_date = np.datetime64(start)
-        end_date = np.datetime64(end)
-        for coordinate in coordinates.values():
-            # note that longitudes are 0->360 not -180->+180
-            if isERA5:
-                location_data = select_time(data, start_date, end_date).sel(
-                    latitude=coordinate[0], longitude=180+coordinate[1], method='nearest').t2m.to_dataframe()
-            else:
-                location_data = select_time(data, start_date, end_date).sel(
-                    latitude=coordinate[0], longitude=180+coordinate[1], method='nearest').tas.to_dataframe()
-            models[model_name] = location_data
-    # return models
+    for model_name, model_data in data["models"].items()
+        print("Processing {}...".format(model_name))
 
-    return {'s3://climate-ensembling/tst/EC-Earth3/': pd.DataFrame(np.ones((10,10)))}
+        if model_name in ['ERA5', 'ERA-Interim']:
+            processed_data = process_reference(model_data)
+            processed_data.attrs["is_reference"]==True
+            models[model_name] = processed_data
 
-def apply_bias_correction(era5_model_data, model_data, bc_method,
-                            past_start='1979-01-01', past_end='2000-12-31',
-                            future_start='2000-01-01', future_end='2014-12-31'):
+            # *** save reference dataset to s3 here, so that following functions can be per model
 
-    model = ClimateModel("climate_model", data=model_data)
-    era5_model = ClimateModel("climate_model", data=era5_model_data)
-    data = model.data.df
-    era5 = era5_model.data.df
-                            
-    ps_past = [np.datetime64(past_start), np.datetime64(past_end)]
-    ps_future = [np.datetime64(future_start), np.datetime64(future_end)]
+        else:
+            processed_data = process_models(model_data, standardised_calendar)
+            processed_data.attrs["is_reference"]==False
+            models[model_name] = processed_data
 
-    ERA5_past = era5.loc[ps_past[0]:ps_past[1]].t2m
+    return models
+    #return {'s3://climate-ensembling/tst/EC-Earth3/': pd.DataFrame(np.ones((10,10)))}
 
-    past = data.loc[ps_past[0]:ps_past[1]].tas
-    future = data.loc[ps_future[0]:ps_future[1]].tas
 
-    if bc_method == 'delta':
-        corrected = delta_correction(ERA5_past, past, future)
+def select_location(models, parameters):
+    '''
+    Select data by locations and time ranges specified in parameters
+    '''
+    print("Selecting location...")
 
-    return {'bias_corrected': corrected.to_pandas()}
+    start = parameters['time_range'][0] # np.datetime64
+    end = parameters['time_range'][1]
 
-def compute_disruption_days(model, temperature_threshold):
-    data = model.data.df
-    
-    celsius = temperature_threshold - 273.13
-    EC_Earth_df = data.to_frame()
-    EC_Earth_df['exc_{}'.format(celsius)] = np.where(data['tas'] >= temperature_threshold, 1,0)
-    return {'disruption_days': EC_Earth_df.to_pandas()}
+    models_selection = {}
 
-def aggregate_models(EC_Earth, models, temp=30):
-    data = model.data.df
-    annual_exc = EC_Earth['exc_{}'.format(temp)].groupby(EC_Earth.index.year).sum().to_frame('EC_Earth')
-    for model in models:
-        # groupby year, aggregate count on 'exc'
-        annual_exc[model.name] = data['exc_{}'.format(temp)].groupby(data.index.year).sum().to_frame()
-    
-    annual_exc['ensemble_mean_{}'.format(temp)] = annual_exc.mean(axis=1)
-    return {'aggregated_results': annual_exc.to_pandas()}
+    for model_name, model_data in models.items():
+        for loc in parameters['locations']:
+            selected_data = select_location(model_data, loc, start, end)
 
+            models_selection[model_name] = selected_data
+
+    return models_selection
+    #return {'s3://climate-ensembling/tst/EC-Earth3/': pd.DataFrame(np.ones((10,10)))}
+
+    #path = 's3://climate-ensembling/' + ...?
+    #return {path: models}
+
+def apply_bias_correction(models, parameters):
+    '''
+    Take in models_selection dict i.e. 1-d, standardised time-range
+    and bias-correction method specified in parameters
+    returns dict of bias-corrected dataframes + reference data
+    '''
+
+    reference = xr.open_dataset("<path_to_reference_dataset>", engine="netcdf4")
+
+    models_to_correct={}
+    for model_name, model_data in models.items():
+        if model_data.is_reference==True:
+            continue # the reference dataset was previously saved
+
+        elif model_data.is_reference==False:
+            models_to_correct[model_name]=model_data
+
+    past = parameters['past']
+    future = parameters['future']
+
+    bias_corrected_models={}
+    for model_name, model_data in models_to_correct.items():
+        if parameters[bias_correction_method]=="none":
+            bias_corrected_models[model_name] = no_correction(model_name, model_data, reference, past, future)
+
+        elif parameters[bias_correction_method]=="delta":
+            bias_corrected_models[model_name] = delta_correction(model_name, model_data, reference, past, future)
+
+        #elif etc for other b-c methods
+
+    return bias_corrected_models
+
+def compute_disruption_days(models, parameters):
+    '''
+    ...
+    '''
+
+    temperature_threshold = parameters['temperature_threshold']
+
+    disruption_days={}
+    for model_name, model_df in models.items():
+        model_df['exc_{}'.format(temperature_threshold)] = np.where(model_df.model >= temperature_threshold, 1, 0)
+        disruption_days[model_name] = model_df
+
+    return disruption_days
+
+def aggregate_models(models, parameters):
+    '''
+    ...
+    '''
+
+    temperature_threshold = parameters['temperature_threshold']
+
+    annual_exc={}
+    for model_name, model_df in models.items():
+        annual_exc[model_name] = model_df['exc_{}'.format(temperature_threshold)].groupby(model_df.index.year).sum().to_frame(model_name)
+
+    annual_exc['aggregate_mean_{}'.format(temperature_threshold)] = annual_exc.mean(axis=1).to_pandas()
+    return annual_exc
