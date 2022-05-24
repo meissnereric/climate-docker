@@ -21,6 +21,7 @@ if __name__ == "__main__":
     args = hv.parse()
     service_name = args['service_name']
     inputs = args['inputs']
+    output_locations = args['outputs']
     parameters = args[service_name]['parameters']
 
     print("Running task with parameters {}".format(args))
@@ -32,7 +33,10 @@ if __name__ == "__main__":
     # input_data = {'selected_model':  pd.DataFrame([[1,2], [3,4]]), 'base-model': pd.DataFrame([[1,2], [3,4]])}
     print("************************ Data ********************* \n {}".format(loaded_parameters))
     outputs = hv.run_task(service_name, loaded_parameters)
+    combined_output_locations = {}
+    for i, (k) in enumerate(output_locations.keys()):
+        combined_output_locations[k] = (output_locations[k], outputs[i])
 
-    hv.upload_outputs(outputs, args)
+    hv.upload_outputs(combined_output_locations)
     print("\n\nWe're done!!!!!\n\n\n")
  

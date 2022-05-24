@@ -5,6 +5,8 @@ import json
 import sys
 import boto3
 from datetime import datetime
+import pandas as pd
+import s3fs
 
 # TEST_DATA_S3_URI = "s3://climate-ensembling/test_data.csv"
 TEST_DATA_KEY = "tst/EC-Earth3/"
@@ -132,15 +134,14 @@ class ClimateHypervisor(ContainerHypervisor):
         
         return outputs
 
-    def upload_outputs(self, outputs, args, bucket_name='climate-ensembling'):
+    def upload_outputs(self, outputs, bucket_name='climate-ensembling'):
         """
         Assumes outputs is a list of DataFrames [df, df, ...]
         """
 
         s3 = boto3.resource("s3")
         s3_bucket = s3.Bucket(name=bucket_name)
-        output_locations=args['outputs']
-        print("Upload these outputs! Outputs: {} Output Locations: {} ---".format(outputs, output_locations))
+        print("Upload these outputs! Outputs: {}---".format(outputs))
 
         # datetime object containing current date and time
         now = datetime.now()
@@ -149,11 +150,16 @@ class ClimateHypervisor(ContainerHypervisor):
         dt_string = now.strftime("%d:%m:%Y:%H:%M")
         # dd/mm/YY H:M:S
 
-        for output, location in zip(outputs, output_locations):
-            filename=dt_string+'.csv'
-            bucket_name = 'climate-ensembling'
-            obj_name='SelectLocation/f715723d0caa6ef7/' + filename
-            outputs[output].to_csv(filename)
-            s3_bucket.upload_file(filename, bucket_name, obj_name)
+        for output, location in outputs.values():
+                if isinstance(output, pd.DataFrame):
+                    filename=dt_string+'.csv'
+                    outputs[output].to_csv(filename)
+                else:#is MFD type then
+                    filename=dt_string+'.nc'
+                    output.to_netcdf(filename)
+
+                bucket_name = 'climate-ensembling'
+                obj_name = location + filename
+                s3_bucket.upload_file(filename, bucket_name, obj_name)
 
         print ("Finished uploading data!")

@@ -14,7 +14,9 @@ def process_data(data, parameters):
     models = {}
 
     #*** create upload standard calendar xr dataset
-    standardised_calendar = xr.open_dataset("<path_to_standardised_calendar>", engine="netcdf4")
+    # standardised_calendar = xr.open_dataset("<path_to_standardised_calendar>", engine="netcdf4")
+    # standardised_calendar = xr.open_dataset(parameters['path_to'], engine="netcdf4")
+    standardised_calendar = parameters['path_to'].df
 
     for model_name, model_data in data["models"].items():
         print("Processing {}...".format(model_name))
@@ -35,7 +37,7 @@ def process_data(data, parameters):
     #return {'s3://climate-ensembling/tst/EC-Earth3/': pd.DataFrame(np.ones((10,10)))}
 
 
-def select_location(models, parameters):
+def select_location(parameters):
     '''
     Select data by locations and time ranges specified in parameters
     '''
@@ -80,10 +82,10 @@ def apply_bias_correction(models, parameters):
 
     bias_corrected_models={}
     for model_name, model_data in models_to_correct.items():
-        if parameters[bias_correction_method]=="none":
+        if parameters["bias_correction_method"]=="none":
             bias_corrected_models[model_name] = no_correction(model_name, model_data, reference, past, future)
 
-        elif parameters[bias_correction_method]=="delta":
+        elif parameters["bias_correction_method"]=="delta":
             bias_corrected_models[model_name] = delta_correction(model_name, model_data, reference, past, future)
 
         #elif etc for other b-c methods
