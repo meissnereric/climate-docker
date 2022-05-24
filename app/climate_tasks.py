@@ -16,7 +16,7 @@ def process_data(data, parameters):
     #*** create upload standard calendar xr dataset
     standardised_calendar = xr.open_dataset("<path_to_standardised_calendar>", engine="netcdf4")
 
-    for model_name, model_data in data["models"].items()
+    for model_name, model_data in data["models"].items():
         print("Processing {}...".format(model_name))
 
         if model_name in ['ERA5', 'ERA-Interim']:

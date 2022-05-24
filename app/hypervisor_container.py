@@ -61,48 +61,47 @@ class ClimateHypervisor(ContainerHypervisor):
         return real_args
 
     def _parse_data(self, key, value): 
-            if value.startswith("s3://"): # TODO Change to "if self.is_input_data(value)"
-                components = value[5:].split('/')
-                print("Components: {} {}".format((key, value), components))
-                s3_key = '/'.join(components[1:])
-                s3_bucket = components[0]
-                if key not in self.data:
-                    self.data[key] = {}
-                self.data[key][value] = (Data(DataType.MDF, DataLocationType.S3, s3_key=s3_key, s3_bucket_name=s3_bucket))
+        if value.startswith("s3://"): # TODO Change to "if self.is_input_data(value)"
+            components = value[5:].split('/')
+            print("Components: {} {}".format((key, value), components))
+            s3_key = '/'.join(components[1:])
+            s3_bucket = components[0]
+            if key not in self.data:
+                self.data[key] = {}
+            dtype = DataType.CSV if '.csv' in value else DataType.MDF
+            self.data[key][value] = (Data(dtype, DataLocationType.S3, s3_key=s3_key, s3_bucket_name=s3_bucket))
+        else:
+            return value
+        return self.data[key][value]
 
-    def retrieve_data(self, args):
+    def load_data(self, inputs, parameters):
         """
-        Returns a dictionary of type {"name of Data object": Data}
+        Returns the parameters ditionary, combined with the inputs, having loaded any parameters in either that were from S3 and replaced them with a Data object.
+        
+        e.g
+        {'base_model' : Data(s3_key='s3://.....', ...)}
         """
-        print("Args!: {}".format(args))
-        service_name = args['service_name']
-        inputs = args['inputs']
-        parameters = args['parameters'][service_name]
 
-        for key, value in inputs.items():
+        loaded_parameters = {}
+
+        for key, value in {**inputs, **parameters}.items():
+            if key in parameters and key in inputs:
+                print("************** WARNING ************* inputs and parameters share a key ({}), this will cause issues, please rename one of them to a unique name.".format(key))
+            print("Inputs to load in : ")
             print("Key: {} Value: {}".format(key, value))
-            # Grab the argument and stick it in the dictionary?
             if isinstance(value, list):
+                loaded = []
                 listvalue = value
                 for v in listvalue:
-                    self._parse_data(key, v)
+                    loaded.append(self._parse_data(key, v))
             else:
-                self._parse_data(key, value)
+                loaded = self._parse_data(key, value)
+            loaded_parameters[key] = loaded
 
-        for key, value in parameters.items():
-            print("Key: {} Value: {}".format(key, value))
-            # Grab the argument and stick it in the dictionary?
-            if isinstance(value, list):
-                listvalue = value
-                for v in listvalue:
-                    self._parse_data(key, v)
-            else:
-                self._parse_data(key, value)
-
-        return self.data
+        return loaded_parameters
 
         
-    def run_task(self, task, data, args):
+    def run_task(self, task, loaded_parameters):
         """
         :param task: String of the task name
         :param data: {'name of data': Data}
@@ -117,27 +116,21 @@ class ClimateHypervisor(ContainerHypervisor):
         5.
 
         """
-        print("Args: {}".format(args))
         print("Task: {}".format(task))
-        print("Data: {}".format(data))
-        parameters = args['parameters'][task]
-        print("Parameters: {}".format(parameters))
+        print("Parameters: {}".format(loaded_parameters))
         outputs = None
         if task == "SelectLocation":
-            outputs = select_location(data, parameters)
+            outputs = select_location(loaded_parameters)
         
         elif task == "BiasCorrection":
-            outputs =  apply_bias_correction(data, parameters)
+            outputs =  apply_bias_correction(loaded_parameters)
 
         elif task == "AggregateModels":
-            outputs = aggregate_models(data, parameters)
+            outputs = aggregate_models(loaded_parameters)
         else:
             assert False, "No valid task chosen!"
         
         return outputs
-
-        for output in outputs:
-            data.append(Data())
 
     def upload_outputs(self, outputs, args, bucket_name='climate-ensembling'):
         """
