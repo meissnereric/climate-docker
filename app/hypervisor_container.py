@@ -149,7 +149,6 @@ class ClimateHypervisor(ContainerHypervisor):
         print("now =", now)
         dt_string = now.strftime("%d:%m:%Y:%H:%M")
         # dd/mm/YY H:M:S
-
         for output, location in outputs.values():
                 if isinstance(output, pd.DataFrame):
                     filename=dt_string+'.csv'
