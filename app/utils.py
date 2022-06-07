@@ -5,6 +5,7 @@ import scipy.interpolate as interp
 import calendar
 import os
 from geopy.geocoders import Nominatim
+from scipy.optimize import linear_sum_assignment
 
 ##################### import data #####################
 
@@ -192,14 +193,15 @@ def no_correction(model_name, model, reference, past, future):
     model_past = model.loc[past[0]:past[1]].t2m
     model_future = model.loc[future[0]:future[1]].t2m
 
-    uncorrected = model_future.to_frame("model")
-    uncorrected['model'] = model_name
+    uncorrected = model_future
+    #uncorrected = model_future.to_frame("model")
+    #uncorrected['model'] = model_name
 
-    reference_df = reference_future.to_frame("reference")
+    #reference_df = reference_future.to_frame("reference")
 
-    df = pd.concat([reference_df.t2m, corrected_df.t2m, corrected_df.model], axis=1)
+    #df = pd.concat([reference_df.t2m, corrected_df.t2m, corrected_df.model], axis=1)
     #df.rename(columns={"reference": "T_obs", "model": "T_model"}, inplace=True)
-    return df
+    return uncorrected, reference_future
 
 
 def delta_correction(model_name, model, reference, past, future):
@@ -215,19 +217,22 @@ def delta_correction(model_name, model, reference, past, future):
     model_past = model.loc[past[0]:past[1]].t2m
     model_future = model.loc[future[0]:future[1]].t2m
 
-    corrected = (model_future + (np.nanmean(observation_past) - np.nanmean(model_past))).to_frame("model")
-    corrected['model']=model_name
+    corrected = model_future + (np.nanmean(reference_past) - np.nanmean(model_past))
 
-    reference_df = reference_future.to_frame("reference")
+    #corrected = (model_future + (np.nanmean(reference_past) - np.nanmean(model_past))).to_frame("model")
+    #corrected['model']=model_name
 
-    df = pd.concat([reference_df.t2m, corrected_df.t2m, corrected_df.model], axis=1)
+    #reference_df = reference_future.to_frame("reference")
+
+    #df = pd.concat([reference_df.t2m, corrected_df.t2m, corrected_df.model], axis=1)
     #df.rename(columns={"reference": "T_obs", "model": "T_model"}, inplace=True)
-    return df
+    return corrected, reference_future
 
 def relative_delta_correction(model_name, model, reference, past, future):
     '''
     relative mean-shift bias correction
     i.e. model_future = model_future * (observation_past.mean / model_past.mean)
+    this is important for e.g. precipitation to avoid returning unphysical < 0 values
     returns reference + bias-corrected model dataframe
     '''
 
@@ -237,14 +242,16 @@ def relative_delta_correction(model_name, model, reference, past, future):
     model_past = model.loc[past[0]:past[1]].t2m
     model_future = model.loc[future[0]:future[1]].t2m
 
-    corrected = (model_future * (np.nanmean(observation_past) / np.nanmean(model_past))).to_frame("model")
-    corrected['model']=model_name
+    corrected = model_future * (np.nanmean(reference_past) / np.nanmean(model_past))
 
-    reference_df = reference_future.to_frame("reference")
+    #corrected = (model_future * (np.nanmean(reference_past) / np.nanmean(model_past))).to_frame("model")
+    #corrected['model']=model_name
 
-    df = pd.concat([reference_df.t2m, corrected_df.t2m, corrected_df.model], axis=1)
+    #reference_df = reference_future.to_frame("reference")
+
+    #df = pd.concat([reference_df.t2m, corrected_df.t2m, corrected_df.model], axis=1)
     #df.rename(columns={"reference": "T_obs", "model": "T_model"}, inplace=True)
-    return df
+    return corrected, reference_future
 
 ##################### reordering utils #####################
 
@@ -289,7 +296,73 @@ def band_matrix(window: int, N):
         a[a==0]='nan'
         return a
 
-####
+def reorder(A, B, window):
+    '''
+    apply optimal matching algorithm to series B to match series A
+    for sliding time windows up to specified window.
+    windows must be odd numbers (symmetrical around central day)
+    threshold_type 'lower' -> match high temperature extremes
+    threshold_type 'upper' -> match low temperature extremes
+    '''
+
+    cost_matrix = (A[:, None] - B[None, :])**2
+    exclude_cost = cost_matrix.max()*2 # set arbitrarily high cost to prevent reordering of these points
+
+    if window % 2 == 0:
+        window += 1
+    #windows = np.arange(1, max_window+1, 2)
+
+    #for window in windows: ## outputs should be per time window ?
+        # generate band matrix with 'nan' outside allowed sliding window
+    b = band_matrix(window, cost_matrix.shape[0])
+    banded_cost_matrix = cost_matrix * b
+    banded_cost_matrix[np.isnan(banded_cost_matrix)] = exclude_cost
+
+    row_index, column_index = linear_sum_assignment(np.abs(banded_cost_matrix))
+    B_matched = B[i] for i in column_index
+
+    return B_matched
+
+def rms(A, B):
+    '''
+    root mean sq error of 2 series
+    '''
+    return ((A-B)**2).mean()**0.5
+
+def threshold_cost(A, B, threshold, threshold_type):
+    '''
+    calculate rms (?) cost of B wrt A above/below specified threshold
+    threshold_type = "lower" i.e. evaluate high-temperature extremes, and vice-versa
+    '''
+
+    if threshold_type == 'none':
+        include_indices = [i for i in range(len(B))]
+
+    elif threshold_type == 'lower':
+        exclude_indices = [i for i in range(len(B)) if B[i] < threshold] #???
+        include_indices = [i for i in range(len(B)) if B[i]>= threshold]
+
+    elif threshold_type = 'upper':
+        include_indices = [i for i in range(len(B)) if B[i] < threshold]
+        exclude_indices = [i for i in range(len(B)) if B[i]>= threshold]
+
+    else:
+        print("error: select threshold 'none', 'lower', 'upper'")
+
+    B_selected = B[include_indices]
+
+    # if cost_metric == 'rms' ?
+    cost = rms(A, B_selected)
+
+    return cost
+
+def reordering_cost(A, B, window=7, threshold, threshold_type="lower"):
+    '''
+    combined function for reordering + calculate cost
+    '''
+    B_matched = reorder(A, B, window)
+    cost = threshold_cost(A, B_matched, threshold, threshold_type)
+    return cost
 
 ######################## Utils for Task Management #######################
 def load_object_from_s3(s3_client):
