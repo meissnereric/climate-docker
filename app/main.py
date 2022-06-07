@@ -22,7 +22,7 @@ if __name__ == "__main__":
     service_name = args['service_name']
     inputs = args['inputs']
     output_locations = args['outputs']
-    parameters = args[service_name]['parameters']
+    parameters = args['parameters'][service_name]
 
     print("Running task with parameters {}".format(args))
 

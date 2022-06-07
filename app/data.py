@@ -1,6 +1,6 @@
 
 
-from utils import download_s3_folder, import_mdf_dataset, get_local_directory
+from utils import download_s3_folder, import_dataset, get_local_directory
 import pandas as pd
 import numpy as np
 import boto3
@@ -63,7 +63,7 @@ class Data:
     def _load_object_from_s3(self):
         if self.dtype ==  DataType.MDF:
             download_s3_folder(self.s3_bucket, self.s3_key, local_dir=self.s3_key)
-            return import_mdf_dataset(self.directory, self.s3_key)
+            return import_dataset(self.directory, self.s3_key)
 
         if self.dtype ==  DataType.CSV:
             

@@ -13,7 +13,7 @@ def get_local_directory():
     print("CWD: {}".format(cwd))
     return cwd
 
-def import_dataset(folder):
+def import_dataset(directory, folder):
     '''
     read xarray multi-file dataset for CMIP5/CMIP6 global climate models
     folders are arranged per model as 'cmip5/<model_name>' or 'cmip6/<model_name>'
@@ -24,7 +24,7 @@ def import_dataset(folder):
     path = os.path.join(directory+"/"+folder+"/*.nc")
     return xr.open_mfdataset(path, engine="netcdf4")
 
-def import_reference(folder="reference/ERA5"):
+def import_reference(directory, folder="reference/ERA5"):
     '''
     read xarray reference dataset (i.e. ERA5 or ERA-Interim gridded observational reanalysis)
     see: https://www.ecmwf.int/en/forecasts/datasets/reanalysis-datasets/era5
