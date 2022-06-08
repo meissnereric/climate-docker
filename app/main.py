@@ -33,9 +33,11 @@ if __name__ == "__main__":
     # input_data = {'selected_model':  pd.DataFrame([[1,2], [3,4]]), 'base-model': pd.DataFrame([[1,2], [3,4]])}
     print("************************ Data ********************* \n {}".format(loaded_parameters))
     outputs = hv.run_task(service_name, loaded_parameters)
+    print("Returned outputs from run_task: {}".format(outputs))
     combined_output_locations = {}
     for i, (k) in enumerate(output_locations.keys()):
         combined_output_locations[k] = (output_locations[k], outputs[i])
+    print("combined_output_locations: {}".format(combined_output_locations))
 
     hv.upload_outputs(combined_output_locations)
     print("\n\nWe're done!!!!!\n\n\n")

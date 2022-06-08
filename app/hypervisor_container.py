@@ -1,12 +1,11 @@
 from data import Data, DataLocationType, DataType
-from climate_tasks import aggregate_models, apply_bias_correction, select_location
+from climate_tasks import apply_bias_correction, select_location, calculate_cost, process_data
 import argparse
 import json
 import sys
 import boto3
 from datetime import datetime
 import pandas as pd
-import s3fs
 
 # TEST_DATA_S3_URI = "s3://climate-ensembling/test_data.csv"
 TEST_DATA_KEY = "tst/EC-Earth3/"
@@ -62,15 +61,19 @@ class ClimateHypervisor(ContainerHypervisor):
 
         return real_args
 
+    def parse_s3_uri(self, uri):
+        components = uri[5:].split('/')
+        s3_key = '/'.join(components[1:])
+        s3_bucket = components[0]
+        return s3_key, s3_bucket
+
     def _parse_data(self, key, value): 
         if value.startswith("s3://"): # TODO Change to "if self.is_input_data(value)"
-            components = value[5:].split('/')
-            print("Components: {} {}".format((key, value), components))
-            s3_key = '/'.join(components[1:])
-            s3_bucket = components[0]
+            s3_key, s3_bucket = self.parse_s3_uri(value)
             if key not in self.data:
                 self.data[key] = {}
             dtype = DataType.CSV if '.csv' in value else DataType.MDF
+            print("Retrieving for bucket {} and key {}".format(s3_bucket, s3_key))
             self.data[key][value] = (Data(dtype, DataLocationType.S3, s3_key=s3_key, s3_bucket_name=s3_bucket))
         else:
             return value
@@ -127,8 +130,13 @@ class ClimateHypervisor(ContainerHypervisor):
         elif task == "BiasCorrection":
             outputs =  apply_bias_correction(loaded_parameters)
 
-        elif task == "AggregateModels":
-            outputs = aggregate_models(loaded_parameters)
+        elif task == "CalculateCost":
+            outputs =  calculate_cost(loaded_parameters)
+
+        elif task == "ProcessData":
+            outputs = process_data(loaded_parameters)
+        # elif task == "AggregateModels":
+        #     outputs = aggregate_models(loaded_parameters)
         else:
             assert False, "No valid task chosen!"
         
@@ -138,18 +146,16 @@ class ClimateHypervisor(ContainerHypervisor):
         """
         Assumes outputs is a list of DataFrames [df, df, ...]
         """
-
         s3 = boto3.resource("s3")
-        s3_bucket = s3.Bucket(name=bucket_name)
         print("Upload these outputs! Outputs: {}---".format(outputs))
-
         # datetime object containing current date and time
         now = datetime.now()
         
         print("now =", now)
         dt_string = now.strftime("%d:%m:%Y:%H:%M")
         # dd/mm/YY H:M:S
-        for output, location in outputs.values():
+        for location, output in outputs.values():
+                print("Output: {} Location: {}".format(output, location))
                 if isinstance(output, pd.DataFrame):
                     filename=dt_string+'.csv'
                     outputs[output].to_csv(filename)
@@ -157,8 +163,10 @@ class ClimateHypervisor(ContainerHypervisor):
                     filename=dt_string+'.nc'
                     output.to_netcdf(filename)
 
-                bucket_name = 'climate-ensembling'
-                obj_name = location + filename
-                s3_bucket.upload_file(filename, bucket_name, obj_name)
+                s3_key, bucket_name = self.parse_s3_uri(location)
+                s3_bucket = s3.Bucket(name=bucket_name)
+                obj_name = s3_key + filename
+                print("Uploading local file {} to bucket {} and location {}".format(filename, s3_bucket, obj_name))
+                s3_bucket.upload_file(filename, obj_name)
 
         print ("Finished uploading data!")

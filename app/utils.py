@@ -132,7 +132,7 @@ def select_time(ds, start, end):
     '''
     return ds.sel(time=slice(start, end))
 
-def select_location(ds, city, start=None, end=None): #, to_pandas=False):
+def select_location_mdf(ds, city, start=None, end=None): #, to_pandas=False):
     '''
     select 1-d time series for specified city, optionally select time range
     returns DataArray
@@ -181,7 +181,7 @@ def calendar_days(start, end):
 # see description of 4 standard bias-correction methods:
 # https://www.metoffice.gov.uk/binaries/content/assets/metofficegovuk/pdf/research/ukcp/ukcp18-guidance---how-to-bias-correct.pdf
 
-def no_correction(model_name, model, reference, past, future):
+def no_correction(model, reference, past, future):
     '''
     return reference + model dataframe without applying any bias correction method
     takes past, future lists e.g. past = [past_start, past_end]
@@ -204,7 +204,7 @@ def no_correction(model_name, model, reference, past, future):
     return uncorrected, reference_future
 
 
-def delta_correction(model_name, model, reference, past, future):
+def delta_correction(model, reference, past, future):
     '''
     simplest additive mean-shift bias correction
     i.e. model_future = model_future + (observation_past.mean - model_past.mean)
@@ -319,7 +319,7 @@ def reorder(A, B, window):
     banded_cost_matrix[np.isnan(banded_cost_matrix)] = exclude_cost
 
     row_index, column_index = linear_sum_assignment(np.abs(banded_cost_matrix))
-    B_matched = B[i] for i in column_index
+    B_matched = [B[i] for i in column_index]
 
     return B_matched
 
@@ -342,7 +342,7 @@ def threshold_cost(A, B, threshold, threshold_type):
         exclude_indices = [i for i in range(len(B)) if B[i] < threshold] #???
         include_indices = [i for i in range(len(B)) if B[i]>= threshold]
 
-    elif threshold_type = 'upper':
+    elif threshold_type == 'upper':
         include_indices = [i for i in range(len(B)) if B[i] < threshold]
         exclude_indices = [i for i in range(len(B)) if B[i]>= threshold]
 
@@ -356,7 +356,7 @@ def threshold_cost(A, B, threshold, threshold_type):
 
     return cost
 
-def reordering_cost(A, B, window=7, threshold, threshold_type="lower"):
+def reordering_cost(A, B, window=7, threshold=10, threshold_type="lower"):
     '''
     combined function for reordering + calculate cost
     '''

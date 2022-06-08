@@ -1,4 +1,4 @@
-from utils import *
+from utils import process_models, no_correction, delta_correction, reordering_cost, select_location_mdf
 import numpy as np
 import xarray as xr
 
@@ -13,7 +13,7 @@ def process_data(parameters):
 
     standardised_calendar = parameters["standardised_calendar"]
     model_data = parameters["model"]
-    processed_data = process_models(model, standardised_calendar)
+    processed_data = process_models(model_data, standardised_calendar)
 
     return processed_data
 
@@ -22,17 +22,17 @@ def select_location(parameters):
     Select time series by location and time ranges specified in parameters
     '''
 
-    model_data = parameters["model"]
+    model_data = parameters["model"].df
 
     start = parameters["start"] # np.datetime64
     end = parameters["end"]
-    location = paramters['location']
+    location = parameters['location']
 
     print("Selecting location...")
     print(start, end, location)
 
-    selected_data = select_location(model_data, location, start, end)
-    return selected_data
+    selected_data = select_location_mdf(model_data, location, start, end)
+    return [selected_data]
 
 def apply_bias_correction(parameters):
     '''
@@ -40,21 +40,23 @@ def apply_bias_correction(parameters):
     options: 'none', 'delta', tbc...
     '''
 
-    model_data = parameters['model']
+    model_data = parameters['model'].df
     reference = parameters["reference"]
 
     past = parameters['past']
     future = parameters['future']
+
+    bias_correction_method = parameters['bias_correction_method']
     
     if parameters[bias_correction_method]=="none":
-        bias_corrected_model, bias_correction_reference = no_correction(model_name, model_data, reference, past, future)
+        bias_corrected_model, bias_correction_reference = no_correction(model_data, reference, past, future)
 
     elif parameters[bias_correction_method]=="delta":
-        bias_corrected_model, bias_correction_reference = delta_correction(model_name, model_data, reference, past, future)
+        bias_corrected_model, bias_correction_reference = delta_correction(model_data, reference, past, future)
 
     #elif etc.
 
-    return bias_corrected_model, bias_correction_reference
+    return [bias_corrected_model, bias_correction_reference]
 
 def calculate_cost(parameters):
     '''
@@ -63,11 +65,11 @@ def calculate_cost(parameters):
     '''
 
     # these should generally be bias_corrected_model, bias_correction_reference from previous task
-    model_data = parameters['model']
-    reference = paramaters['reference']
+    model_data = parameters['model'].df
+    reference = parameters['reference']
 
     window = parameters["window"]
-    threshold = paramters["threshold"]
+    threshold = parameters["threshold"]
     threshold_type = parameters["threshold_type"] #'upper'/'lower'/'none'
 
     A = reference.tas.values#[start:stop]
@@ -75,14 +77,14 @@ def calculate_cost(parameters):
     # at some point this should account for more other variables than tas...
 
     cost = reordering_cost(A, B, window, threshold, threshold_type)
-    return cost
+    return [cost]
 
 ######## disregard tasks requiring multi model input for now
 # def compute_disruption_days(models, parameters):
 #     '''
 #     ...
 #     '''
-#     model_data = parameters['model']
+#     model_data = parameters['model'].df
 #
 #     threshold = parameters['threshold']
 #
