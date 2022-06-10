@@ -11,18 +11,18 @@ def process_data(parameters):
     '''
     print("Processing datasets...")
 
-    standardised_calendar = parameters["standardised_calendar"]
-    model_data = parameters["model"]
+    standardised_calendar = parameters["standardised_calendar"].df
+    model_data = parameters["model"].df
     processed_data = process_models(model_data, standardised_calendar)
 
-    return processed_data
+    return [processed_data]
 
 def select_location(parameters):
     '''
     Select time series by location and time ranges specified in parameters
     '''
 
-    model_data = parameters["model"].df
+    model_data = parameters["ProcessData"].df
 
     start = parameters["start"] # np.datetime64
     end = parameters["end"]
