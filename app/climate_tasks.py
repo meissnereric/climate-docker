@@ -17,6 +17,25 @@ def process_data(parameters):
 
     return [processed_data]
 
+def select_location_and_quantiles(parameters):
+    '''
+    Select time series by location and time ranges specified in parameters
+    '''
+
+    model_data = parameters["ProcessData"].df
+
+    start = parameters["start"] # np.datetime64
+    end = parameters["end"]
+    location = parameters['location']
+
+    print("Selecting location...")
+    print(start, end, location)
+
+    selected_data = select_location_mdf(model_data, location, start, end)
+    quantiles = quantiles(model_data, location, start, end)
+    return [selected_data, quantiles]
+
+
 def select_location(parameters):
     '''
     Select time series by location and time ranges specified in parameters

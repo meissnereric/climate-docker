@@ -22,23 +22,46 @@ if __name__ == "__main__":
     service_name = args['service_name']
     inputs = args['inputs']
     output_locations = args['outputs']
-    parameters = args['parameters'][service_name]
 
     print("Running task with parameters {}".format(args))
 
-    # input_data_locations input_data_locations= {'selected_model': 's3://climate-ensembling/', 'base-model': 's3://climate-ensembling/'}
-    # input_data_locations = {'selected_model': 's3://climate-ensembling/EC-Earth3/', 'base-model': 's3://climate-ensembling/era5/t2m/'}
-    loaded_parameters = hv.load_data(inputs, parameters) # -> [Data]
+    if service_name == "CalculateCostsAll": #Fast experiment, all tasks in one run mode
+        parameters = args['parameters']
+        loaded_parameters = hv.load_data(inputs, parameters) # -> [Data]
+        print("************************ Data ********************* \n {}".format(loaded_parameters))
 
-    # input_data = {'selected_model':  pd.DataFrame([[1,2], [3,4]]), 'base-model': pd.DataFrame([[1,2], [3,4]])}
-    print("************************ Data ********************* \n {}".format(loaded_parameters))
-    outputs = hv.run_task(service_name, loaded_parameters)
-    print("Returned outputs from run_task: {}".format(outputs))
-    combined_output_locations = {}
-    for i, (k) in enumerate(output_locations.keys()):
-        combined_output_locations[k] = (output_locations[k], outputs[i])
-    print("combined_output_locations: {}".format(combined_output_locations))
+        pd_output = hv.run_task("ProcessData", loaded_parameters)
+        loaded_parameters['model'] = pd_output
 
-    hv.upload_outputs(combined_output_locations)
-    print("\n\nWe're done!!!!!\n\n\n")
+        sl_output, quantiles = hv.run_task("SelectLocation", loaded_parameters)
+        loaded_parameters['model'] = sl_output
+
+        bc_output = hv.run_task("BiasCorrection", loaded_parameters)
+        loaded_parameters['model'] = bc_output
+
+        for quantile in quantiles:
+            loaded_parameters['threshold'] = quantile
+            cc_output = hv.run_task("CalculateCosts", loaded_parameters)
+            combined_output_locations = {}
+            for i, (k) in enumerate(output_locations.keys()):
+                quantile_location = output_locations[k]+'quantile-{}/'.format(quantile)
+                combined_output_locations[k] = (quantile_location, cc_output[i])
+            print("combined_output_locations: {}".format(combined_output_locations))
+
+            hv.upload_outputs(combined_output_locations)            
+
+    else: # Normal mode
+        parameters = args['parameters'][service_name]
+        loaded_parameters = hv.load_data(inputs, parameters) # -> [Data]
+        print("************************ Data ********************* \n {}".format(loaded_parameters))
+
+        outputs = hv.run_task(service_name, loaded_parameters)
+        print("Returned outputs from run_task: {}".format(outputs))
+        combined_output_locations = {}
+        for i, (k) in enumerate(output_locations.keys()):
+            combined_output_locations[k] = (output_locations[k], outputs[i])
+        print("combined_output_locations: {}".format(combined_output_locations))
+
+        hv.upload_outputs(combined_output_locations)
+        print("\n\nWe're done!!!!!\n\n\n")
  
