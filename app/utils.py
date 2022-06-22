@@ -65,10 +65,8 @@ def rename_coord(ds, names_dict):
     takes dictionary {"old_name":"new_name"}
     '''
 #   *** "coord" -> "dimension" to avoid confusion
-    for old_name, new_name in names_dict.items():
-        if old_name in list(ds.coords.keys()):
-            ds.rename({old_name:new_name})
-    return ds
+    ds_renamed = ds.rename(names_dict)
+    return ds_renamed
 
 def cf_to_datetime(ds):
     '''
@@ -100,6 +98,7 @@ def process_models(ds, reference):
     "ffill": propagate last valid index value forward
     '''
     #a = import_dataset(ds)
+    processed_reference = process_reference(reference)
     b = remove_feb_29_30(ds)#(a)
     if calendar_type(b) in {np.datetime64}:
         c = b
@@ -108,7 +107,7 @@ def process_models(ds, reference):
         c = cf_to_datetime(b)
     else:
         print("Error: unknown calendar type")
-    d = c.reindex_like(reference, method="ffill")
+    d = c.reindex_like(processed_reference, method="ffill")
     e = normalize_time(d)
     return e
 
