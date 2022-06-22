@@ -187,11 +187,11 @@ def no_correction(model, reference, past, future):
     takes past, future lists e.g. past = [past_start, past_end]
     *** make bias correction functions flexible to other variables than t2m
     '''
-    reference_past = reference.loc[past[0]:past[1]].t2m
-    reference_future = reference.loc[future[0]:future[1]].t2m
+    reference_past = reference.loc[dict(time=slice(past[0],past[1]))].t2m
+    reference_future = reference.loc[dict(time=slice(future[0],future[1]))].t2m
 
-    model_past = model.loc[past[0]:past[1]].t2m
-    model_future = model.loc[future[0]:future[1]].t2m
+    model_past = model.loc[dict(time=slice(past[0],past[1]))].t2m
+    model_future = model.loc[dict(time=slice(future[0],future[1]))].t2m
 
     uncorrected = model_future
     #uncorrected = model_future.to_frame("model")
@@ -211,11 +211,11 @@ def delta_correction(model, reference, past, future):
     returns reference + bias-corrected model dataframe
     '''
 
-    reference_past = reference.loc[past[0]:past[1]].t2m
-    reference_future = reference.loc[future[0]:future[1]].t2m
+    reference_past = reference.loc[past[0],past[1]].t2m
+    reference_future = reference.loc[future[0],future[1]].t2m
 
-    model_past = model.loc[past[0]:past[1]].t2m
-    model_future = model.loc[future[0]:future[1]].t2m
+    model_past = model.loc[past[0],past[1]].t2m
+    model_future = model.loc[future[0],future[1]].t2m
 
     corrected = model_future + (np.nanmean(reference_past) - np.nanmean(model_past))
 

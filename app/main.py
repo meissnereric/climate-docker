@@ -2,6 +2,7 @@
 
 import pandas as pd
 from hypervisor_container import ClimateHypervisor
+from data import Data, DataLocationType, DataType
 
 """
 Interface Design
@@ -31,17 +32,26 @@ if __name__ == "__main__":
         print("************************ Data ********************* \n {}".format(loaded_parameters))
 
         pd_output = hv.run_task("ProcessData", loaded_parameters)
-        loaded_parameters['model'] = pd_output
+        print("Direct output of ProcessData: {} ".format(pd_output))
+        loaded_parameters['model'] = Data(DataType.MDF, DataLocationType.LOCAL, df=pd_output[0])
+        print("Parameters after ProcessData update: {}".format(loaded_parameters))
 
         sl_output, quantiles = hv.run_task("SelectLocation", loaded_parameters)
-        loaded_parameters['model'] = sl_output
+        print("Direct output of SelectLocation: {} {}".format(sl_output, quantiles))
+        print("Attributes of SelectLocation sl_output: {}".format(sl_output.attrs))
+        loaded_parameters['model'] = Data(DataType.MDF, DataLocationType.LOCAL, df=sl_output)
+        print("Parameters after SelectLocation update: {}".format(loaded_parameters))
 
         bc_output = hv.run_task("BiasCorrection", loaded_parameters)
-        loaded_parameters['model'] = bc_output
+        print("Direct output of BiasCorrection: {} ".format(bc_output))
+        loaded_parameters['model'] = Data(DataType.MDF, DataLocationType.LOCAL, df=bc_output[0])
+        print("Parameters after BiasCorrection update: {}".format(loaded_parameters))
 
         for quantile in quantiles:
             loaded_parameters['threshold'] = quantile
             cc_output = hv.run_task("CalculateCosts", loaded_parameters)
+
+            # Save / upload
             combined_output_locations = {}
             for i, (k) in enumerate(output_locations.keys()):
                 quantile_location = output_locations[k]+'quantile-{}/'.format(quantile)

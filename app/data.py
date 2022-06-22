@@ -13,16 +13,17 @@ class DataType(Enum):
 class DataLocationType(Enum):
     S3="s3"
     KAFKA="kafka"
+    LOCAL="local"
 
 class Data:
     """
     This class contains logic that handles the actual downloading / uploading of data to respective data sources.
     The Data object is standardized across all Hypervisor use locations, client, container, and server.
     """
-    def __init__(self, dtype, data_location, s3_key=None, s3_bucket_name=None,  path=None,):
+    def __init__(self, dtype, data_location, s3_key=None, s3_bucket_name=None,  path=None, df=None):
         self.path = path
         self.dtype = dtype
-        self.df = None
+        self.df = df
         self.data_location = data_location
         self.s3_key = s3_key
         self.s3_bucket_name = s3_bucket_name

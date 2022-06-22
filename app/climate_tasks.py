@@ -22,7 +22,7 @@ def select_location_and_quantiles(parameters):
     Select time series by location and time ranges specified in parameters
     '''
 
-    model_data = parameters["ProcessData"].df
+    model_data = parameters["model"].df
 
     start = parameters["start"] # np.datetime64
     end = parameters["end"]
@@ -32,7 +32,8 @@ def select_location_and_quantiles(parameters):
     print(start, end, location)
 
     selected_data = select_location_mdf(model_data, location, start, end)
-    quantiles = quantiles(model_data, location, start, end)
+    #quantiles = quantiles(model_data, location, start, end)
+    quantiles = [290, 295, 300]
     return [selected_data, quantiles]
 
 
@@ -41,7 +42,7 @@ def select_location(parameters):
     Select time series by location and time ranges specified in parameters
     '''
 
-    model_data = parameters["ProcessData"].df
+    model_data = parameters["model"].df
 
     start = parameters["start"] # np.datetime64
     end = parameters["end"]
@@ -60,17 +61,17 @@ def apply_bias_correction(parameters):
     '''
 
     model_data = parameters['model'].df
-    reference = parameters["reference"]
+    reference = parameters["reference"].df
 
     past = parameters['past']
     future = parameters['future']
 
     bias_correction_method = parameters['bias_correction_method']
     
-    if parameters[bias_correction_method]=="none":
+    if parameters["bias_correction_method"]=="none":
         bias_corrected_model, bias_correction_reference = no_correction(model_data, reference, past, future)
 
-    elif parameters[bias_correction_method]=="delta":
+    elif parameters["bias_correction_method"]=="delta":
         bias_corrected_model, bias_correction_reference = delta_correction(model_data, reference, past, future)
 
     #elif etc.
@@ -85,7 +86,7 @@ def calculate_cost(parameters):
 
     # these should generally be bias_corrected_model, bias_correction_reference from previous task
     model_data = parameters['model'].df
-    reference = parameters['reference']
+    reference = parameters['reference'].df
 
     window = parameters["window"]
     threshold = parameters["threshold"]

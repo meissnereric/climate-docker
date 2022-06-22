@@ -3,7 +3,7 @@ FROM python:3.7
 COPY ./requirements/requirements.txt /app/requirements.txt
 RUN pip install -r /app/requirements.txt
 
-COPY ./scripts /scripts
+COPY ./scripts/ /scripts
 RUN chmod 755 /scripts/*
 
 COPY ./app /app

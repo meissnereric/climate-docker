@@ -1,5 +1,5 @@
 from data import Data, DataLocationType, DataType
-from climate_tasks import apply_bias_correction, select_location, calculate_cost, process_data
+from climate_tasks import apply_bias_correction, select_location, select_location_and_quantiles, calculate_cost, process_data
 import argparse
 import json
 import sys
@@ -68,8 +68,9 @@ class ClimateHypervisor(ContainerHypervisor):
         return s3_key, s3_bucket
 
     def _parse_data(self, key, value): 
-        if value.startswith("s3://"): # TODO Change to "if self.is_input_data(value)"
+        if isinstance(value, type("")) and value.startswith("s3://"): # TODO Change to "if self.is_input_data(value)"
             s3_key, s3_bucket = self.parse_s3_uri(value)
+            print("Parsing data for key: {} value: {}, coming from s3 key {} and bucket {}.".format(key, value, s3_key, s3_bucket))
             if key not in self.data:
                 self.data[key] = {}
             dtype = DataType.CSV if '.csv' in value else DataType.MDF
@@ -125,7 +126,7 @@ class ClimateHypervisor(ContainerHypervisor):
         print("Parameters: {}".format(loaded_parameters))
         outputs = None
         if task == "SelectLocation":
-            outputs = select_location(loaded_parameters)
+            outputs = select_location_and_quantiles(loaded_parameters)
         
         elif task == "BiasCorrection":
             outputs =  apply_bias_correction(loaded_parameters)
