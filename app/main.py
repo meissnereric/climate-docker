@@ -30,12 +30,13 @@ if __name__ == "__main__":
         parameters = args['parameters']
         
         loaded_parameters = hv.load_data(inputs, parameters) # -> [Data]
-        og_model = loaded_parameters['model']
-        loaded_parameters['model'] = loaded_parameters['reference']
-        reference_output = hv.run_task("ProcessData", loaded_parameters)
-        print("Direct output of ProcessData for reference: {} ".format(reference_output))
-        loaded_parameters['reference'] = Data(DataType.MDF, DataLocationType.LOCAL, df=reference_output[0])
-        loaded_parameters['model'] = og_model
+        
+        #og_model = loaded_parameters['model']
+        #loaded_parameters['model'] = loaded_parameters['reference']
+        #reference_output = hv.run_task("ProcessData", loaded_parameters)
+        #print("Direct output of ProcessData for reference: {} ".format(reference_output))
+        #loaded_parameters['reference'] = Data(DataType.MDF, DataLocationType.LOCAL, df=reference_output[0])
+        #loaded_parameters['model'] = og_model
 
         print("************************ Data ********************* \n {}".format(loaded_parameters))
 
