@@ -98,7 +98,6 @@ def process_models(ds, reference):
     "ffill": propagate last valid index value forward
     '''
     #a = import_dataset(ds)
-    processed_reference = process_reference(reference)
     b = remove_feb_29_30(ds)#(a)
     if calendar_type(b) in {np.datetime64}:
         c = b
@@ -186,11 +185,11 @@ def no_correction(model, reference, past, future):
     takes past, future lists e.g. past = [past_start, past_end]
     *** make bias correction functions flexible to other variables than t2m
     '''
-    reference_past = reference.loc[dict(time=slice(past[0],past[1]))].t2m
-    reference_future = reference.loc[dict(time=slice(future[0],future[1]))].t2m
+    reference_past = reference.loc[dict(time=slice(past[0],past[1]))].tas
+    reference_future = reference.loc[dict(time=slice(future[0],future[1]))].tas
 
-    model_past = model.loc[dict(time=slice(past[0],past[1]))].t2m
-    model_future = model.loc[dict(time=slice(future[0],future[1]))].t2m
+    model_past = model.loc[dict(time=slice(past[0],past[1]))].tas
+    model_future = model.loc[dict(time=slice(future[0],future[1]))].tas
 
     uncorrected = model_future
     #uncorrected = model_future.to_frame("model")
@@ -210,11 +209,11 @@ def delta_correction(model, reference, past, future):
     returns reference + bias-corrected model dataframe
     '''
 
-    reference_past = reference.loc[past[0],past[1]].t2m
-    reference_future = reference.loc[future[0],future[1]].t2m
+    reference_past = reference.loc[past[0],past[1]].tas
+    reference_future = reference.loc[future[0],future[1]].tas
 
-    model_past = model.loc[past[0],past[1]].t2m
-    model_future = model.loc[future[0],future[1]].t2m
+    model_past = model.loc[past[0],past[1]].tas
+    model_future = model.loc[future[0],future[1]].tas
 
     corrected = model_future + (np.nanmean(reference_past) - np.nanmean(model_past))
 
@@ -235,11 +234,11 @@ def relative_delta_correction(model_name, model, reference, past, future):
     returns reference + bias-corrected model dataframe
     '''
 
-    reference_past = reference.loc[past[0]:past[1]].t2m
-    reference_future = reference.loc[future[0]:future[1]].t2m
+    reference_past = reference.loc[past[0]:past[1]].tas
+    reference_future = reference.loc[future[0]:future[1]].tas
 
-    model_past = model.loc[past[0]:past[1]].t2m
-    model_future = model.loc[future[0]:future[1]].t2m
+    model_past = model.loc[past[0]:past[1]].tas
+    model_future = model.loc[future[0]:future[1]].tas
 
     corrected = model_future * (np.nanmean(reference_past) / np.nanmean(model_past))
 
