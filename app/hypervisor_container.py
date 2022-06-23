@@ -131,7 +131,7 @@ class ClimateHypervisor(ContainerHypervisor):
         elif task == "BiasCorrection":
             outputs =  apply_bias_correction(loaded_parameters)
 
-        elif task == "CalculateCost":
+        elif task == "CalculateCosts":
             outputs =  calculate_cost(loaded_parameters)
 
         elif task == "ProcessData":
@@ -159,7 +159,8 @@ class ClimateHypervisor(ContainerHypervisor):
                 print("Output: {} Location: {}".format(output, location))
                 if isinstance(output, pd.DataFrame):
                     filename=dt_string+'.csv'
-                    outputs[output].to_csv(filename)
+                    print("Output: {} {}".format(outputs, type(output)))
+                    output.to_csv(filename)
                 else:#is MFD type then
                     filename=dt_string+'.nc'
                     output.to_netcdf(filename)

@@ -23,12 +23,13 @@ if __name__ == "__main__":
     service_name = args['service_name']
     inputs = args['inputs']
     output_locations = args['outputs']
+    
 
     print("Running task with parameters {}".format(args))
 
     if service_name == "CalculateCostsAll": #Fast experiment, all tasks in one run mode
         parameters = args['parameters']
-        
+        windows = parameters['window']    
         loaded_parameters = hv.load_data(inputs, parameters) # -> [Data]
         
         #og_model = loaded_parameters['model']
@@ -38,7 +39,21 @@ if __name__ == "__main__":
         #loaded_parameters['reference'] = Data(DataType.MDF, DataLocationType.LOCAL, df=reference_output[0])
         #loaded_parameters['model'] = og_model
 
-        print("************************ Data ********************* \n {}".format(loaded_parameters))
+        print("************************ Reference Processing Data ********************* \n {}".format(loaded_parameters))
+        print("******** Reference values pre- SelectLocation **********")
+        print(loaded_parameters['reference'].df.tas.values)
+
+        og_model = loaded_parameters['model']
+        loaded_parameters['model'] = loaded_parameters['reference']
+        reference_output = hv.run_task("SelectLocation", loaded_parameters)
+        print("Direct output of SelectLocation for reference: {} ".format(reference_output))
+        loaded_parameters['reference'] = Data(DataType.MDF, DataLocationType.LOCAL, df=reference_output[0])
+        loaded_parameters['model'] = og_model
+
+        print("******** Reference values post- SelectLocation **********")
+        print(loaded_parameters['reference'].df.tas.values)
+
+        print("************************ Model Processing Data ********************* \n {}".format(loaded_parameters))
 
         pd_output = hv.run_task("ProcessData", loaded_parameters)
         print("Direct output of ProcessData: {} ".format(pd_output))
@@ -54,17 +69,26 @@ if __name__ == "__main__":
         bc_output = hv.run_task("BiasCorrection", loaded_parameters)
         print("Direct output of BiasCorrection: {} ".format(bc_output))
         loaded_parameters['model'] = Data(DataType.MDF, DataLocationType.LOCAL, df=bc_output[0])
+        loaded_parameters['reference'] = Data(DataType.MDF, DataLocationType.LOCAL, df=bc_output[1])
+        print("******** Reference values post- BiasCorrection **********")
+        print(loaded_parameters['reference'].df.values)
         print("Parameters after BiasCorrection update: {}".format(loaded_parameters))
 
         for quantile in quantiles:
             loaded_parameters['threshold'] = quantile
-            cc_output = hv.run_task("CalculateCosts", loaded_parameters)
-
+            final_outputs = []
+            for window in windows:
+                loaded_parameters['window'] = window
+                cost, reordered = hv.run_task("CalculateCosts", loaded_parameters)
+                final_outputs.append((quantile, window, cost, reordered))
+            final_outputs_df = pd.DataFrame(final_outputs, columns=['threshold', 'window', 'cost', 'reordered'])
+            print("Final_outputs_df: {}".format(final_outputs_df))
+            
             # Save / upload
             combined_output_locations = {}
             for i, (k) in enumerate(output_locations.keys()):
-                quantile_location = output_locations[k]+'quantile-{}/'.format(quantile)
-                combined_output_locations[k] = (quantile_location, cc_output[i])
+                quantile_location = output_locations[k]+'threshold-{}/'.format(quantile)
+                combined_output_locations[k] = (quantile_location, final_outputs_df)
             print("combined_output_locations: {}".format(combined_output_locations))
 
             hv.upload_outputs(combined_output_locations)            

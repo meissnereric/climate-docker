@@ -106,7 +106,7 @@ def process_models(ds, reference):
         c = cf_to_datetime(b)
     else:
         print("Error: unknown calendar type")
-    d = c.reindex_like(processed_reference, method="ffill")
+    d = c.reindex_like(reference, method="ffill")
     e = normalize_time(d)
     return e
 
@@ -315,7 +315,8 @@ def reorder(A, B, window):
     b = band_matrix(window, cost_matrix.shape[0])
     banded_cost_matrix = cost_matrix * b
     banded_cost_matrix[np.isnan(banded_cost_matrix)] = exclude_cost
-
+    
+    print("********** Banded Cost Matrix ************* \n {}".format(banded_cost_matrix))
     row_index, column_index = linear_sum_assignment(np.abs(banded_cost_matrix))
     B_matched = [B[i] for i in column_index]
 
@@ -325,7 +326,7 @@ def rms(A, B):
     '''
     root mean sq error of 2 series
     '''
-    return ((A-B)**2).mean()**0.5
+    return ((A.mean()-B.mean())**2)**0.5
 
 def threshold_cost(A, B, threshold, threshold_type):
     '''
@@ -359,8 +360,11 @@ def reordering_cost(A, B, window=7, threshold=10, threshold_type="lower"):
     combined function for reordering + calculate cost
     '''
     B_matched = reorder(A, B, window)
-    cost = threshold_cost(A, B_matched, threshold, threshold_type)
-    return cost
+    print("B_matched: {}".format(type(B_matched)))
+    np_A = np.array(A)
+    np_B_matched = np.array(B_matched)
+    cost = threshold_cost(np_A, np_B_matched, threshold, threshold_type)
+    return cost, B_matched
 
 ######################## Utils for Task Management #######################
 def load_object_from_s3(s3_client):

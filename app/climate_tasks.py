@@ -92,12 +92,14 @@ def calculate_cost(parameters):
     threshold = parameters["threshold"]
     threshold_type = parameters["threshold_type"] #'upper'/'lower'/'none'
 
-    A = reference.tas.values#[start:stop]
-    B = model_data.tas.values#[start:stop]  # A is fixed, B is reordered
+    A = reference.values#[start:stop]
+    B = model_data.values#[start:stop]  # A is fixed, B is reordered
     # at some point this should account for more other variables than tas...
 
-    cost = reordering_cost(A, B, window, threshold, threshold_type)
-    return [cost]
+    print("Reference: {} Values: {} \n Model: {} Values: {}".format(reference, reference.values, model_data, model_data.values))
+
+    cost, reordered = reordering_cost(A, B, window, threshold, threshold_type)
+    return [cost, reordered]
 
 ######## disregard tasks requiring multi model input for now
 # def compute_disruption_days(models, parameters):
