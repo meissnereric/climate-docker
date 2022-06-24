@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 import boto3
+import time
+
 
 CLUSTER='HypervisorCluster'
 
@@ -8,41 +10,48 @@ def monitor_tasks(client, models, locations):
     total_tasks = len(models) * len(locations)
     done = False
     i=0
+    start = time.time()
+    mid = time.time()
+    end = time.time()
+    print(end - start)
     while not done:
-        i = i + 1
-        running_response = client.list_tasks(
-            cluster=CLUSTER,
-            desiredStatus='RUNNING'
-        )
-        pending_response = client.list_tasks(
-            cluster=CLUSTER,
-            desiredStatus='PENDING'
-        )
-        running = running_response['taskArns']
-        pending = pending_response['taskArns']
-        waiting = running + pending
-        if len(waiting) >  0:
-            done=False
-        else:
-            done=True
-            stopped_response = client.list_tasks(
+        end = time.time()
+        if end - mid > 10:
+            mid = end
+            running_response = client.list_tasks(
                 cluster=CLUSTER,
-                desiredStatus='STOPPED'
+                desiredStatus='RUNNING'
             )
-            stopped = stopped_response['taskArns']
-            print("\n ************************** \n Finished tasks: {}".format(stopped))
-
-            stopped_statuses = client.describe_tasks(
+            pending_response = client.list_tasks(
                 cluster=CLUSTER,
-                tasks=stopped
+                desiredStatus='PENDING'
             )
+            running = running_response['taskArns']
+            pending = pending_response['taskArns']
+            waiting = running + pending
+            if len(waiting) >  0:
+                done=False
+            else:
+                done=True
+                stopped_response = client.list_tasks(
+                    cluster=CLUSTER,
+                    desiredStatus='STOPPED'
+                )
+                stopped = stopped_response['taskArns']
+                print ("\n **************************")
+                print ("\n Finished running all tasks in {} minutes.".format(end - start))
+                print("\n Finished tasks: {}".format(stopped))
 
-            for task in stopped_statuses['tasks']:
-                print("\nSuccess: {} \n - {}".format(task['taskArn'], task['overrides']['containerOverrides']['command']))
-            for task in stopped_statuses['failures']:
-                print("\nFailure: {} \n - {} \n - {}".format(task['arn'], task['reason'], task['detail']))
+                stopped_statuses = client.describe_tasks(
+                    cluster=CLUSTER,
+                    tasks=stopped
+                )
 
-        if i % 25 == 0:
+                for task in stopped_statuses['tasks']:
+                    print("\nSuccess: {} \n - {}".format(task['taskArn'], task['overrides']['containerOverrides']['command']))
+                for task in stopped_statuses['failures']:
+                    print("\nFailure: {} \n - {} \n - {}".format(task['arn'], task['reason'], task['detail']))
+            
             print("({}) Tasks left: {}/{}".format(i, len(waiting), total_tasks))
 
 
