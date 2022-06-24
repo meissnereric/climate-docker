@@ -13,19 +13,18 @@ CALCULATE_COSTS_ALL={'
                         "outputs": {"Output1" : "'"$OUTPUT"'"},
                         "parameters": {
                             "model": "'"$MODEL"'",
-                            "standardised_calendar": "s3://climate-ensembling/reference/era5/tas/",
 
                             "location": "'"$LOCATION"'",
-                            "start": "1979-01-01",
-                            "end": "1981-12-30",
+                            "start": "1980-01-01",
+                            "end": "2020-01-01",
 
                             "reference":  "s3://climate-ensembling/reference/era5/tas/",
-                            "past": ["1979-01-01", "1981-01-01"],
-                            "future": ["1981-01-01", "1981-12-30"],
+                            "past": ["1980-01-01", "2000-01-01"],
+                            "future": ["2000-01-01", "2020-01-01"],
                             "bias_correction_method": "none",
 
-                            "window": [3,5],
-                            "threshold": "300",
+                            "window": [100],
+                            "threshold": [],
                             "threshold_type": "lower"
                         }
                     '}

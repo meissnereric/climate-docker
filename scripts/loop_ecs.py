@@ -48,11 +48,11 @@ def monitor_tasks(client, models, locations):
                 )
 
                 for task in stopped_statuses['tasks']:
-                    print("\nSuccess: {} \n - {}".format(task['taskArn'], task['overrides']['containerOverrides']['command']))
+                    print("\nSuccess: {} \n - {}".format(task['taskArn'], task['overrides']['containerOverrides']))
                 for task in stopped_statuses['failures']:
                     print("\nFailure: {} \n - {} \n - {}".format(task['arn'], task['reason'], task['detail']))
             
-            print("({}) Tasks left: {}/{}".format(i, len(waiting), total_tasks))
+            print("({}s elapsed) Tasks left: {}/{}".format(int(end-start), len(waiting), total_tasks))
 
 
 

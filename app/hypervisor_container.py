@@ -1,5 +1,5 @@
 from data import Data, DataLocationType, DataType
-from climate_tasks import apply_bias_correction, select_location, select_location_and_quantiles, calculate_cost, process_data
+from climate_tasks import apply_bias_correction, select_location_and_quantiles, calculate_cost, process_data
 import argparse
 import json
 import sys
@@ -171,4 +171,4 @@ class ClimateHypervisor(ContainerHypervisor):
                 print("Uploading local file {} to bucket {} and location {}".format(filename, s3_bucket, obj_name))
                 s3_bucket.upload_file(filename, obj_name)
 
-        print ("Finished uploading data!")
+        print ("\n\nFinished uploading data!\n\n")

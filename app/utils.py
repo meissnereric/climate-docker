@@ -316,7 +316,6 @@ def reorder(A, B, window):
     banded_cost_matrix = cost_matrix * b
     banded_cost_matrix[np.isnan(banded_cost_matrix)] = exclude_cost
     
-    print("********** Banded Cost Matrix ************* \n {}".format(banded_cost_matrix))
     row_index, column_index = linear_sum_assignment(np.abs(banded_cost_matrix))
     B_matched = [B[i] for i in column_index]
 
@@ -360,7 +359,6 @@ def reordering_cost(A, B, window=7, threshold=10, threshold_type="lower"):
     combined function for reordering + calculate cost
     '''
     B_matched = reorder(A, B, window)
-    print("B_matched: {}".format(type(B_matched)))
     np_A = np.array(A)
     np_B_matched = np.array(B_matched)
     cost = threshold_cost(np_A, np_B_matched, threshold, threshold_type)
