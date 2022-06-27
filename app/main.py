@@ -75,8 +75,8 @@ if __name__ == "__main__":
                 print("Window: {}".format(window))
                 loaded_parameters['window'] = window
                 cost, reordered = hv.run_task("CalculateCosts", loaded_parameters)
-                final_outputs.append((quantile, window, cost, reordered))
-            final_outputs_df = pd.DataFrame(model_location, location_name, final_outputs, columns=['threshold', 'window', 'cost', 'reordered'])
+                final_outputs.append((model_location, location_name, quantile, window, cost, reordered))
+            final_outputs_df = pd.DataFrame(final_outputs, columns=["model_name", "location", 'threshold', 'window', 'cost', 'reordered'])
             print("\n\nFinal_outputs_df: {}".format(final_outputs_df))
             
             # Save / upload
