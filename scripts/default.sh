@@ -4,7 +4,8 @@ TYPE=$1
 MODEL=$2
 MODEL_NAME=$3
 LOCATION=$4
-OUTPUT="s3://climate-ensembling/rmets/model-$MODEL_NAME/location-$LOCATION/"
+UNDERSCORE_LOCATION="${LOCATION// /_}"
+OUTPUT="s3://climate-ensembling/rmets/model-$MODEL_NAME/location-$UNDERSCORE_LOCATION/"
 
 CALCULATE_COSTS_ALL={'
                         "dataId": "CalculateCostsAll--5846990926543449174",
@@ -23,7 +24,7 @@ CALCULATE_COSTS_ALL={'
                             "future": ["2000-01-01", "2014-01-01"],
                             "bias_correction_method": "none",
 
-                            "window": [1, 7, 30, 100, 200],
+                            "window": [1, 7, 30, 100],
                             "threshold": [],
                             "threshold_type": "lower"
                         }
