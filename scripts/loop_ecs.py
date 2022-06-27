@@ -96,8 +96,10 @@ ecs_client = boto3.client("ecs")
 # Call docker
 taskDefinition = "ClimateTaskCF"
 
-models = ["EC-Earth3"]
-locations = ["Dhaka"]
+models = ["EC-Earth3", "GFDL_ESM4", "UK-ESM"]
+locations = ["Dhaka", "Cambridge", "Cardiff", "Perth", "Munich", "San Francisco", "Nairobi", "Tokyo"]
+# models = ["EC-Earth3"]
+# locations = ["Dhaka"]
 
 for model in models:
     for location in locations:

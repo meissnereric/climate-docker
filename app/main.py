@@ -28,7 +28,9 @@ if __name__ == "__main__":
 
     if service_name == "CalculateCostsAll": #Fast experiment, all tasks in one run mode
         parameters = args['parameters']
-        windows = parameters['window']    
+        windows = parameters['window']
+        model_location = parameters['model']
+        location_name = parameters['location']
         loaded_parameters = hv.load_data(inputs, parameters) # -> [Data]
         
         #og_model = loaded_parameters['model']
@@ -42,9 +44,9 @@ if __name__ == "__main__":
 
         og_model = loaded_parameters['model']
         loaded_parameters['model'] = loaded_parameters['reference']
-        reference_output = hv.run_task("SelectLocation", loaded_parameters)
+        reference_output, quantiles = hv.run_task("SelectLocation", loaded_parameters)
         print("Direct output of SelectLocation for reference: {} ".format(reference_output))
-        loaded_parameters['reference'] = Data(DataType.MDF, DataLocationType.LOCAL, df=reference_output[0])
+        loaded_parameters['reference'] = Data(DataType.MDF, DataLocationType.LOCAL, df=reference_output)
         loaded_parameters['model'] = og_model
 
         print("************************ Model Processing Data ********************* \n {}".format(loaded_parameters))
@@ -54,7 +56,7 @@ if __name__ == "__main__":
         loaded_parameters['model'] = Data(DataType.MDF, DataLocationType.LOCAL, df=pd_output[0])
         print("Parameters after ProcessData update: {}".format(loaded_parameters))
 
-        sl_output, quantiles = hv.run_task("SelectLocation", loaded_parameters)
+        sl_output, _ = hv.run_task("SelectLocation", loaded_parameters)
         print("Direct output of SelectLocation: {} {}".format(sl_output, quantiles))
         loaded_parameters['model'] = Data(DataType.MDF, DataLocationType.LOCAL, df=sl_output)
         print("Parameters after SelectLocation update: {}".format(loaded_parameters))
@@ -74,7 +76,7 @@ if __name__ == "__main__":
                 loaded_parameters['window'] = window
                 cost, reordered = hv.run_task("CalculateCosts", loaded_parameters)
                 final_outputs.append((quantile, window, cost, reordered))
-            final_outputs_df = pd.DataFrame(final_outputs, columns=['threshold', 'window', 'cost', 'reordered'])
+            final_outputs_df = pd.DataFrame(model_location, location_name, final_outputs, columns=['threshold', 'window', 'cost', 'reordered'])
             print("\n\nFinal_outputs_df: {}".format(final_outputs_df))
             
             # Save / upload

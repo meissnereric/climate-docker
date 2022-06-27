@@ -16,14 +16,14 @@ CALCULATE_COSTS_ALL={'
 
                             "location": "'"$LOCATION"'",
                             "start": "1980-01-01",
-                            "end": "2020-01-01",
+                            "end": "2014-01-01",
 
                             "reference":  "s3://climate-ensembling/reference/era5/tas/",
                             "past": ["1980-01-01", "2000-01-01"],
-                            "future": ["2000-01-01", "2020-01-01"],
+                            "future": ["2000-01-01", "2014-01-01"],
                             "bias_correction_method": "none",
 
-                            "window": [100],
+                            "window": [1, 7, 30, 100, 200],
                             "threshold": [],
                             "threshold_type": "lower"
                         }

@@ -33,7 +33,8 @@ def select_location_and_quantiles(parameters):
 
     selected_data = select_location_mdf(model_data, location, start, end)
     #quantiles = quantiles(model_data, location, start, end)
-    quantiles = [290, 295, 300]
+    q=[0,0.9]
+    quantiles = np.quantile(selected_data.tas.values, q)
     return [selected_data, quantiles]
 
 def apply_bias_correction(parameters):
@@ -76,7 +77,17 @@ def calculate_cost(parameters):
 
     A = reference.values#[start:stop]
     B = model_data.values#[start:stop]  # A is fixed, B is reordered
+    
+    print("Lengths of Reference(A) and Model(B) arrays here: A:{} B:{}".format(len(A), len(B)))
+    if len(A) != len(B):
+        if len(A) < len(B):
+            print("B shortened to be equal to A.")
+            B = B[:len(A)]
+        else:
+            A = A[:len(B)]
+            print("A shortened to be equal to B.")
     # at some point this should account for more other variables than tas...
+
     
     cost, reordered = reordering_cost(A, B, window, threshold, threshold_type)
     return [cost, reordered]

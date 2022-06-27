@@ -325,7 +325,7 @@ def rms(A, B):
     '''
     root mean sq error of 2 series
     '''
-    return ((A.mean()-B.mean())**2)**0.5
+    return ((A-B)**2).mean()**0.5
 
 def threshold_cost(A, B, threshold, threshold_type):
     '''
@@ -347,10 +347,13 @@ def threshold_cost(A, B, threshold, threshold_type):
     else:
         print("error: select threshold 'none', 'lower', 'upper'")
 
+    A_selected = A[include_indices]
     B_selected = B[include_indices]
 
     # if cost_metric == 'rms' ?
-    cost = rms(A, B_selected)
+    print("Lengths of selected Reference(A) and Model(B) arrays here: A:{} B:{}".format(len(A_selected), len(B_selected)))
+
+    cost = rms(A_selected, B_selected)
 
     return cost
 
