@@ -24,7 +24,7 @@ CALCULATE_COSTS_ALL={'
                             "future": ["2000-01-01", "2014-01-01"],
                             "bias_correction_method": "none",
 
-                            "window": [1, 7, 30, 100],
+                            "window": [1, 7, 30, 100, 200],
                             "threshold": [],
                             "threshold_type": "lower"
                         }
