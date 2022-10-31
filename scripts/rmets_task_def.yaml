@@ -25,8 +25,8 @@ Resources:
         name: climate
       taskRoleArn: arn:aws:iam::288687564189:role/climate-container-role
       family: ClimateTaskCF
-      memory: 30720
-      cpu: 4096
+      memory: 61440
+      cpu: 8192
       ephemeralStorage:
         sizeInGiB: 200
       requiresCompatibilities:
