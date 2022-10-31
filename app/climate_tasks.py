@@ -11,7 +11,7 @@ def process_data(parameters):
     '''
     print("Processing datasets...")
 
-    standardised_calendar = parameters["standardised_calendar"].df
+    standardised_calendar = parameters["reference"].df
     model_data = parameters["model"].df
     processed_data = process_models(model_data, standardised_calendar)
 
@@ -33,26 +33,9 @@ def select_location_and_quantiles(parameters):
 
     selected_data = select_location_mdf(model_data, location, start, end)
     #quantiles = quantiles(model_data, location, start, end)
-    quantiles = [290, 295, 300]
+    q=[0,0.9]
+    quantiles = np.quantile(selected_data.tas.values, q)
     return [selected_data, quantiles]
-
-
-def select_location(parameters):
-    '''
-    Select time series by location and time ranges specified in parameters
-    '''
-
-    model_data = parameters["model"].df
-
-    start = parameters["start"] # np.datetime64
-    end = parameters["end"]
-    location = parameters['location']
-
-    print("Selecting location...")
-    print(start, end, location)
-
-    selected_data = select_location_mdf(model_data, location, start, end)
-    return [selected_data]
 
 def apply_bias_correction(parameters):
     '''
@@ -68,10 +51,10 @@ def apply_bias_correction(parameters):
 
     bias_correction_method = parameters['bias_correction_method']
     
-    if parameters["bias_correction_method"]=="none":
+    if bias_correction_method=="none":
         bias_corrected_model, bias_correction_reference = no_correction(model_data, reference, past, future)
 
-    elif parameters["bias_correction_method"]=="delta":
+    elif bias_correction_method=="delta":
         bias_corrected_model, bias_correction_reference = delta_correction(model_data, reference, past, future)
 
     #elif etc.
@@ -94,10 +77,18 @@ def calculate_cost(parameters):
 
     A = reference.values#[start:stop]
     B = model_data.values#[start:stop]  # A is fixed, B is reordered
+    
+    print("Lengths of Reference(A) and Model(B) arrays here: A:{} B:{}".format(len(A), len(B)))
+    if len(A) != len(B):
+        if len(A) < len(B):
+            print("B shortened to be equal to A.")
+            B = B[:len(A)]
+        else:
+            A = A[:len(B)]
+            print("A shortened to be equal to B.")
     # at some point this should account for more other variables than tas...
 
-    print("Reference: {} Values: {} \n Model: {} Values: {}".format(reference, reference.values, model_data, model_data.values))
-
+    
     cost, reordered = reordering_cost(A, B, window, threshold, threshold_type)
     return [cost, reordered]
 

@@ -15,7 +15,7 @@ Outputs are not lists but single layer dictionaries of strings, if there is more
 """
 
 if __name__ == "__main__":
-    print("Hello and welcome to the Climate Ensembling Dreamworld!")
+    print("******************************************\n Hello and welcome to the Climate Ensembling Dreamworld!\n******************************************")
 
     hv = ClimateHypervisor()
 
@@ -24,12 +24,13 @@ if __name__ == "__main__":
     inputs = args['inputs']
     output_locations = args['outputs']
     
-
     print("Running task with parameters {}".format(args))
 
     if service_name == "CalculateCostsAll": #Fast experiment, all tasks in one run mode
         parameters = args['parameters']
-        windows = parameters['window']    
+        windows = parameters['window']
+        model_location = parameters['model']
+        location_name = parameters['location']
         loaded_parameters = hv.load_data(inputs, parameters) # -> [Data]
         
         #og_model = loaded_parameters['model']
@@ -40,18 +41,13 @@ if __name__ == "__main__":
         #loaded_parameters['model'] = og_model
 
         print("************************ Reference Processing Data ********************* \n {}".format(loaded_parameters))
-        print("******** Reference values pre- SelectLocation **********")
-        print(loaded_parameters['reference'].df.tas.values)
 
         og_model = loaded_parameters['model']
         loaded_parameters['model'] = loaded_parameters['reference']
-        reference_output = hv.run_task("SelectLocation", loaded_parameters)
+        reference_output, quantiles = hv.run_task("SelectLocation", loaded_parameters)
         print("Direct output of SelectLocation for reference: {} ".format(reference_output))
-        loaded_parameters['reference'] = Data(DataType.MDF, DataLocationType.LOCAL, df=reference_output[0])
+        loaded_parameters['reference'] = Data(DataType.MDF, DataLocationType.LOCAL, df=reference_output)
         loaded_parameters['model'] = og_model
-
-        print("******** Reference values post- SelectLocation **********")
-        print(loaded_parameters['reference'].df.tas.values)
 
         print("************************ Model Processing Data ********************* \n {}".format(loaded_parameters))
 
@@ -60,9 +56,8 @@ if __name__ == "__main__":
         loaded_parameters['model'] = Data(DataType.MDF, DataLocationType.LOCAL, df=pd_output[0])
         print("Parameters after ProcessData update: {}".format(loaded_parameters))
 
-        sl_output, quantiles = hv.run_task("SelectLocation", loaded_parameters)
+        sl_output, _ = hv.run_task("SelectLocation", loaded_parameters)
         print("Direct output of SelectLocation: {} {}".format(sl_output, quantiles))
-        print("Attributes of SelectLocation sl_output: {}".format(sl_output.attrs))
         loaded_parameters['model'] = Data(DataType.MDF, DataLocationType.LOCAL, df=sl_output)
         print("Parameters after SelectLocation update: {}".format(loaded_parameters))
 
@@ -70,19 +65,19 @@ if __name__ == "__main__":
         print("Direct output of BiasCorrection: {} ".format(bc_output))
         loaded_parameters['model'] = Data(DataType.MDF, DataLocationType.LOCAL, df=bc_output[0])
         loaded_parameters['reference'] = Data(DataType.MDF, DataLocationType.LOCAL, df=bc_output[1])
-        print("******** Reference values post- BiasCorrection **********")
-        print(loaded_parameters['reference'].df.values)
         print("Parameters after BiasCorrection update: {}".format(loaded_parameters))
 
         for quantile in quantiles:
+            print("\nQuantile: {}".format(quantile))
             loaded_parameters['threshold'] = quantile
             final_outputs = []
             for window in windows:
+                print("Window: {}".format(window))
                 loaded_parameters['window'] = window
                 cost, reordered = hv.run_task("CalculateCosts", loaded_parameters)
-                final_outputs.append((quantile, window, cost, reordered))
-            final_outputs_df = pd.DataFrame(final_outputs, columns=['threshold', 'window', 'cost', 'reordered'])
-            print("Final_outputs_df: {}".format(final_outputs_df))
+                final_outputs.append((model_location, location_name, quantile, window, cost, reordered))
+            final_outputs_df = pd.DataFrame(final_outputs, columns=["model_name", "location", 'threshold', 'window', 'cost', 'reordered'])
+            print("\n\nFinal_outputs_df: {}".format(final_outputs_df))
             
             # Save / upload
             combined_output_locations = {}

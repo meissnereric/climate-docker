@@ -6,6 +6,7 @@ import calendar
 import os
 from geopy.geocoders import Nominatim
 from scipy.optimize import linear_sum_assignment
+import cftime
 
 ##################### import data #####################
 
@@ -316,7 +317,6 @@ def reorder(A, B, window):
     banded_cost_matrix = cost_matrix * b
     banded_cost_matrix[np.isnan(banded_cost_matrix)] = exclude_cost
     
-    print("********** Banded Cost Matrix ************* \n {}".format(banded_cost_matrix))
     row_index, column_index = linear_sum_assignment(np.abs(banded_cost_matrix))
     B_matched = [B[i] for i in column_index]
 
@@ -326,7 +326,7 @@ def rms(A, B):
     '''
     root mean sq error of 2 series
     '''
-    return ((A.mean()-B.mean())**2)**0.5
+    return ((A-B)**2).mean()**0.5
 
 def threshold_cost(A, B, threshold, threshold_type):
     '''
@@ -348,10 +348,13 @@ def threshold_cost(A, B, threshold, threshold_type):
     else:
         print("error: select threshold 'none', 'lower', 'upper'")
 
+    A_selected = A[include_indices]
     B_selected = B[include_indices]
 
     # if cost_metric == 'rms' ?
-    cost = rms(A, B_selected)
+    print("Lengths of selected Reference(A) and Model(B) arrays here: A:{} B:{}".format(len(A_selected), len(B_selected)))
+
+    cost = rms(A_selected, B_selected)
 
     return cost
 
@@ -360,7 +363,6 @@ def reordering_cost(A, B, window=7, threshold=10, threshold_type="lower"):
     combined function for reordering + calculate cost
     '''
     B_matched = reorder(A, B, window)
-    print("B_matched: {}".format(type(B_matched)))
     np_A = np.array(A)
     np_B_matched = np.array(B_matched)
     cost = threshold_cost(np_A, np_B_matched, threshold, threshold_type)
