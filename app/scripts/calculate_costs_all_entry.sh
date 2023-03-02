@@ -30,21 +30,11 @@ CALCULATE_COSTS_ALL={'
                         }
                     '}
 
-TEST_SELECTION=$TYPE
-
-if [ "$TEST_SELECTION" = "pd" ]; then
-    PARAMETERS=$PROCESS_DATA
-elif [ "$TEST_SELECTION" = "sl" ]; then
-    PARAMETERS=$SELECT_LOCATION
-elif [ "$TEST_SELECTION" = "cca" ]; then
-    PARAMETERS=$CALCULATE_COSTS_ALL
-else
-    PARAMETERS=$TYPE
-fi
+PARAMETERS=$CALCULATE_COSTS_ALL
 
 PARAMETERS=$CALCULATE_COSTS_ALL
 
 echo "$1 $2 $3 $4"
 
 echo "... Parameters: $PARAMETERS"
- ../app/main.py --parameters="$PARAMETERS"
+ ../main.py --parameters="$PARAMETERS"
