@@ -19,15 +19,15 @@ if __name__ == "__main__":
 
     hv = ClimateHypervisor()
 
-    args = hv.parse()
-    service_name = args['service_name']
-    inputs = args['inputs']
-    output_locations = args['outputs']
+    hv.parse()
+    service_name = hv.args['service_name']
+    inputs = hv.args['inputs']
+    output_locations = hv.args['outputs']
     
-    print("Running task with parameters {}".format(args))
+    print("Running task with parameters {}".format(hv.args))
 
     if service_name == "CalculateCostsAll": #Fast experiment, all tasks in one run mode
-        parameters = args['parameters']
+        parameters = hv.args['parameters']
         windows = parameters['window']
         model_location = parameters['model']
         location_name = parameters['location']
@@ -89,7 +89,7 @@ if __name__ == "__main__":
             hv.upload_outputs(combined_output_locations)            
 
     else: # Normal mode
-        parameters = args['parameters'][service_name]
+        parameters = hv.args['parameters'][service_name]
         loaded_parameters = hv.load_data(inputs, parameters) # -> [Data]
         print("************************ Data ********************* \n {}".format(loaded_parameters))
 

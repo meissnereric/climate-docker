@@ -48,7 +48,7 @@ class ContainerHypervisor():
 
 class ClimateHypervisor(ContainerHypervisor):
 
-    def parse(self, verbose=True):
+    def parse_args(self, verbose=True):
 
         print("Arguments passed {} \n\n".format(sys.argv))
 
@@ -59,7 +59,7 @@ class ClimateHypervisor(ContainerHypervisor):
         real_args = json.loads(args.parameters)
         print("Parser arguments output: {}".format(real_args))
 
-        return real_args
+        self.args = real_args
 
     def parse_s3_uri(self, uri):
         components = uri[5:].split('/')
@@ -67,18 +67,18 @@ class ClimateHypervisor(ContainerHypervisor):
         s3_bucket = components[0]
         return s3_key, s3_bucket
 
-    def _parse_data(self, key, value): 
-        if isinstance(value, type("")) and value.startswith("s3://"): # TODO Change to "if self.is_input_data(value)"
-            s3_key, s3_bucket = self.parse_s3_uri(value)
-            print("Parsing data for key: {} value: {}, coming from s3 key {} and bucket {}.".format(key, value, s3_key, s3_bucket))
+    def _parse_data(self, key, location_path): 
+        if isinstance(location_path, type("")) and location_path.startswith("s3://"): # TODO Change to "if self.is_input_data(location_path)"
+            s3_key, s3_bucket = self.parse_s3_uri(location_path)
+            print("Parsing data for key: {} location_path: {}, coming from s3 key {} and bucket {}.".format(key, location_path, s3_key, s3_bucket))
             if key not in self.data:
                 self.data[key] = {}
-            dtype = DataType.CSV if '.csv' in value else DataType.MDF
+            dtype = DataType.CSV if '.csv' in location_path else DataType.MDF
             print("Retrieving for bucket {} and key {}".format(s3_bucket, s3_key))
-            self.data[key][value] = (Data(dtype, DataLocationType.S3, s3_key=s3_key, s3_bucket_name=s3_bucket))
+            self.data[key][location_path] = (Data(dtype, DataLocationType.S3, s3_key=s3_key, s3_bucket_name=s3_bucket))
         else:
-            return value
-        return self.data[key][value]
+            return location_path
+        return self.data[key][location_path]
 
     def load_data(self, inputs, parameters):
         """
@@ -90,18 +90,17 @@ class ClimateHypervisor(ContainerHypervisor):
 
         loaded_parameters = {}
 
-        for key, value in {**inputs, **parameters}.items():
+        for key, location_path in {**inputs, **parameters}.items():
             if key in parameters and key in inputs:
                 print("************** WARNING ************* inputs and parameters share a key ({}), this will cause issues, please rename one of them to a unique name.".format(key))
             print("Inputs to load in : ")
-            print("Key: {} Value: {}".format(key, value))
-            if isinstance(value, list):
+            print("Key: {} location_path: {}".format(key, location_path))
+            if isinstance(location_path, list):
                 loaded = []
-                listvalue = value
-                for v in listvalue:
-                    loaded.append(self._parse_data(key, v))
+                for loc in location_path:
+                    loaded.append(self._parse_data(key, loc))
             else:
-                loaded = self._parse_data(key, value)
+                loaded = self._parse_data(key, location_path)
             loaded_parameters[key] = loaded
 
         return loaded_parameters
@@ -136,8 +135,9 @@ class ClimateHypervisor(ContainerHypervisor):
 
         elif task == "ProcessData":
             outputs = process_data(loaded_parameters)
-        # elif task == "AggregateModels":
-        #     outputs = aggregate_models(loaded_parameters)
+        elif task == "AggregateModels":
+            pass
+            # outputs = aggregate_models(loaded_parameters)
         else:
             assert False, "No valid task chosen!"
         
